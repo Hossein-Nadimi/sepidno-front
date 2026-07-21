@@ -1,0 +1,289 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Sepidno — Warm Teal / Emerald palette */
+  --background: hsl(180 20% 99%);
+  --foreground: hsl(172 30% 12%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(172 30% 12%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(172 30% 12%);
+  --primary: hsl(173 75% 32%);
+  --primary-foreground: hsl(180 30% 98%);
+  --secondary: hsl(172 25% 94%);
+  --secondary-foreground: hsl(172 30% 15%);
+  --muted: hsl(172 18% 94%);
+  --muted-foreground: hsl(172 12% 42%);
+  --accent: hsl(168 30% 90%);
+  --accent-foreground: hsl(172 30% 15%);
+  --destructive: hsl(0 72% 52%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(172 18% 88%);
+  --input: hsl(172 18% 88%);
+  --ring: hsl(173 75% 32%);
+  --chart-1: hsl(173 75% 32%);
+  --chart-2: hsl(168 65% 45%);
+  --chart-3: hsl(175 55% 50%);
+  --chart-4: hsl(170 50% 60%);
+  --chart-5: hsl(165 45% 70%);
+  --radius: 0.75rem;
+  --sidebar: hsl(172 20% 98%);
+  --sidebar-foreground: hsl(172 30% 15%);
+  --sidebar-primary: hsl(173 75% 32%);
+  --sidebar-primary-foreground: hsl(180 30% 98%);
+  --sidebar-accent: hsl(172 25% 93%);
+  --sidebar-accent-foreground: hsl(172 30% 15%);
+  --sidebar-border: hsl(172 18% 88%);
+  --sidebar-ring: hsl(173 75% 32%);
+}
+
+.dark {
+  --background: hsl(172 30% 7%);
+  --foreground: hsl(180 20% 92%);
+  --card: hsl(172 28% 11%);
+  --card-foreground: hsl(180 20% 92%);
+  --popover: hsl(172 30% 9%);
+  --popover-foreground: hsl(180 20% 92%);
+  --primary: hsl(168 65% 42%);
+  --primary-foreground: hsl(172 30% 8%);
+  --secondary: hsl(172 20% 18%);
+  --secondary-foreground: hsl(180 20% 92%);
+  --muted: hsl(172 20% 16%);
+  --muted-foreground: hsl(172 14% 58%);
+  --accent: hsl(172 20% 18%);
+  --accent-foreground: hsl(180 20% 92%);
+  --destructive: hsl(0 62% 42%);
+  --destructive-foreground: hsl(180 20% 92%);
+  --border: hsl(172 20% 20%);
+  --input: hsl(172 20% 20%);
+  --ring: hsl(168 65% 42%);
+  --chart-1: hsl(168 65% 42%);
+  --chart-2: hsl(170 55% 52%);
+  --chart-3: hsl(175 48% 58%);
+  --chart-4: hsl(165 42% 68%);
+  --chart-5: hsl(160 38% 78%);
+  --sidebar: hsl(172 28% 10%);
+  --sidebar-foreground: hsl(180 20% 92%);
+  --sidebar-primary: hsl(168 65% 42%);
+  --sidebar-primary-foreground: hsl(172 30% 8%);
+  --sidebar-accent: hsl(172 20% 16%);
+  --sidebar-accent-foreground: hsl(180 20% 92%);
+  --sidebar-border: hsl(172 20% 18%);
+  --sidebar-ring: hsl(168 65% 42%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-vazir), "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-vazir), "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Persian number font feature */
+.persian-nums {
+  font-feature-settings: "ss01";
+}
+
+/* Scrollbar — themed */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+  opacity: 0.5;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--muted) 25%, var(--accent) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Smooth transitions for theme switching */
+*, *::before, *::after {
+  transition-property: background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary) 0%, hsl(168 65% 45%) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Hero gradient */
+.hero-gradient {
+  background:
+    radial-gradient(circle at 20% 0%, hsla(173, 75%, 32%, 0.12), transparent 50%),
+    radial-gradient(circle at 80% 100%, hsla(168, 65%, 45%, 0.08), transparent 50%);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.dark .glass {
+  background: rgba(15, 30, 28, 0.7);
+}
+
+/* Animation utilities */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(20px, -30px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+.animate-blob {
+  animation: blob 8s infinite;
+}
+
+/* ========================================
+   Responsive Tables — Mobile Card Layout
+   ========================================
+   On screens < 640px (sm breakpoint), tables with the `data-responsive-table`
+   attribute are transformed from traditional row/column layout into stacked
+   card layout. Each row becomes a card, and each cell shows its column header
+   as a label above the value.
+*/
+@media (max-width: 639px) {
+  table[data-responsive-table] {
+    display: block;
+  }
+  table[data-responsive-table] thead {
+    display: none;
+  }
+  table[data-responsive-table] tbody {
+    display: block;
+  }
+  /* Each row = a card with shadow and rounded corners */
+  table[data-responsive-table] tr {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+  }
+  /* Each cell = a row inside the card with clear separation */
+  table[data-responsive-table] td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    min-height: 2.75rem;
+  }
+  table[data-responsive-table] td:last-child {
+    border-bottom: none;
+  }
+  /* Label (column header) shown on the right with muted styling */
+  table[data-responsive-table] td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--muted-foreground);
+    font-size: 0.7rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: none;
+    letter-spacing: 0.01em;
+  }
+  /* The value side should take remaining space and align left */
+  table[data-responsive-table] td[data-label] > * {
+    text-align: left;
+  }
+  /* Highlight the first cell (usually the main identifier like order number / name) */
+  table[data-responsive-table] tr > td:first-child {
+    background: var(--muted);
+    font-weight: 600;
+  }
+  table[data-responsive-table] tr > td:first-child::before {
+    color: var(--foreground);
+    opacity: 0.7;
+  }
+  /* Actions cell — center the buttons */
+  table[data-responsive-table] td[data-label="عملیات"] {
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+  }
+}

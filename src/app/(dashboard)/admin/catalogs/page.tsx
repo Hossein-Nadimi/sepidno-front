@@ -1,0 +1,287 @@
+"use client";
+
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { BookOpen, Plus, Edit2, Trash2, Loader2, Save } from "lucide-react";
+import { adminService } from "@/services";
+import type { CatalogItem } from "@/types";
+import { PageHeader } from "@/components/common/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { EmptyState } from "@/components/common/empty-state";
+import { TableLoading } from "@/components/common/loading";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toPersianDigits } from "@/lib/utils";
+import { toJalaliDateTime } from "@/lib/jalali";
+import toast from "react-hot-toast";
+
+const CATALOGS = [
+  { key: "garment-types", label: "انواع لباس" },
+  { key: "service-types", label: "انواع خدمت" },
+  { key: "fabric-types", label: "انواع پارچه" },
+  { key: "colors", label: "رنگ‌ها" },
+  { key: "inventory-item-types", label: "انواع اقلام انبار" },
+  { key: "order-statuses", label: "وضعیت‌های سفارش" },
+  { key: "sms-templates", label: "قالب‌های پیامک" },
+  { key: "receipt-templates", label: "قالب‌های قبض" },
+];
+
+export default function AdminCatalogsPage() {
+  const queryClient = useQueryClient();
+  const [activeCatalog, setActiveCatalog] = useState(CATALOGS[0].key);
+  const [editing, setEditing] = useState<{ id?: string; title: string; description: string; displayOrder: number; active: boolean; extra: Record<string, string> } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CatalogItem | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-catalog", activeCatalog],
+    queryFn: () => adminService.catalogs.list(activeCatalog, { pageSize: 100 }),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => adminService.catalogs.create(activeCatalog, payload),
+    onSuccess: () => {
+      toast.success("آیتم ایجاد شد");
+      queryClient.invalidateQueries({ queryKey: ["admin-catalog", activeCatalog] });
+      setEditing(null);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
+      adminService.catalogs.update(activeCatalog, id, payload),
+    onSuccess: () => {
+      toast.success("آیتم به‌روزرسانی شد");
+      queryClient.invalidateQueries({ queryKey: ["admin-catalog", activeCatalog] });
+      setEditing(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminService.catalogs.delete(activeCatalog, id),
+    onSuccess: () => {
+      toast.success("آیتم حذف شد");
+      queryClient.invalidateQueries({ queryKey: ["admin-catalog", activeCatalog] });
+      setDeleteTarget(null);
+    },
+  });
+
+  function handleSave() {
+    if (!editing) return;
+    if (!editing.title.trim()) {
+      toast.error("عنوان الزامی است");
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      title: editing.title,
+      description: editing.description,
+      displayOrder: editing.displayOrder,
+      active: editing.active,
+    };
+    // Merge catalog-specific extras
+    for (const [k, v] of Object.entries(editing.extra)) {
+      if (v !== "") payload[k] = v;
+    }
+    if (editing.id) {
+      updateMutation.mutate({ id: editing.id, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  }
+
+  const items = data?.items || [];
+
+  // Determine extra fields based on catalog
+  const extraFields: Array<{ key: string; label: string; type?: string }> = [];
+  if (activeCatalog === "colors") extraFields.push({ key: "hex", label: "کد رنگ (hex)" });
+  if (activeCatalog === "inventory-item-types") extraFields.push({ key: "unit", label: "واحد" });
+  if (activeCatalog === "order-statuses") {
+    extraFields.push({ key: "isCompleted", label: "وضعیت تکمیل شده", type: "boolean" });
+    extraFields.push({ key: "isCancelled", label: "وضعیت لغو شده", type: "boolean" });
+  }
+  if (activeCatalog === "sms-templates") {
+    extraFields.push({ key: "body", label: "متن قالب", type: "textarea" });
+    extraFields.push({ key: "event", label: "رویداد (event)" });
+  }
+  if (activeCatalog === "receipt-templates") {
+    extraFields.push({ key: "body", label: "متن قالب", type: "textarea" });
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="کاتالوگ‌های سراسری"
+        description="مدیریت کاتالوگ‌های مشترک پلتفرم"
+        actions={
+          <Button onClick={() => setEditing({ title: "", description: "", displayOrder: 0, active: true, extra: {} })}>
+            <Plus className="size-4 ml-1" />
+            آیتم جدید
+          </Button>
+        }
+      />
+
+      <Tabs value={activeCatalog} onValueChange={setActiveCatalog}>
+        <TabsList className="flex-wrap h-auto">
+          {CATALOGS.map((c) => (
+            <TabsTrigger key={c.key} value={c.key}>{c.label}</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-4"><TableLoading /></div>
+          ) : items.length === 0 ? (
+            <EmptyState icon={BookOpen} title="آیتمی در این کاتالوگ ثبت نشده است" />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>عنوان</TableHead>
+                  <TableHead>slug</TableHead>
+                  <TableHead className="text-center">ترتیب</TableHead>
+                  <TableHead>تاریخ ثبت</TableHead>
+                  <TableHead className="text-center">وضعیت</TableHead>
+                  <TableHead className="text-left">عملیات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item._id}>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell dir="ltr" className="text-xs text-muted-foreground">{item.slug}</TableCell>
+                    <TableCell className="text-center">{toPersianDigits(item.displayOrder)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{toJalaliDateTime(item.createdAt)}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={item.active ? "default" : "secondary"}>
+                        {item.active ? "فعال" : "غیرفعال"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            setEditing({
+                              id: item._id,
+                              title: item.title,
+                              description: item.description || "",
+                              displayOrder: item.displayOrder,
+                              active: item.active,
+                              extra: {},
+                            })
+                          }
+                        >
+                          <Edit2 className="size-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteTarget(item)}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create / Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing?.id ? "ویرایش آیتم" : "آیتم جدید"}</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>عنوان</Label>
+                <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>توضیحات</Label>
+                <Textarea rows={2} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>ترتیب نمایش</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={editing.displayOrder}
+                    onChange={(e) => setEditing({ ...editing, displayOrder: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="flex items-end gap-2 pb-2">
+                  <Switch
+                    checked={editing.active}
+                    onCheckedChange={(v) => setEditing({ ...editing, active: v })}
+                    id="catActive"
+                  />
+                  <Label htmlFor="catActive">فعال</Label>
+                </div>
+              </div>
+              {extraFields.map((f) => (
+                <div key={f.key} className="space-y-2">
+                  <Label>{f.label}</Label>
+                  {f.type === "textarea" ? (
+                    <Textarea
+                      rows={4}
+                      value={editing.extra[f.key] || ""}
+                      onChange={(e) => setEditing({ ...editing, extra: { ...editing.extra, [f.key]: e.target.value } })}
+                    />
+                  ) : f.type === "boolean" ? (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Switch
+                        checked={editing.extra[f.key] === "true"}
+                        onCheckedChange={(v) => setEditing({ ...editing, extra: { ...editing.extra, [f.key]: v ? "true" : "" } })}
+                        id={`extra-${f.key}`}
+                      />
+                      <Label htmlFor={`extra-${f.key}`}>{f.label}</Label>
+                    </div>
+                  ) : (
+                    <Input
+                      value={editing.extra[f.key] || ""}
+                      onChange={(e) => setEditing({ ...editing, extra: { ...editing.extra, [f.key]: e.target.value } })}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>انصراف</Button>
+            <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
+              {createMutation.isPending || updateMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4 ml-1" />
+              )}
+              ذخیره
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="حذف آیتم"
+        description={`آیا از حذف «${deleteTarget?.title}» اطمینان دارید؟`}
+        confirmText="حذف"
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget._id); }}
+        loading={deleteMutation.isPending}
+      />
+    </div>
+  );
+}
