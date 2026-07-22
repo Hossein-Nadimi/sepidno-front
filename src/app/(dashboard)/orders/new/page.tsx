@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { PageHelp } from "@/components/common/page-help";
 import { JalaliDatePicker } from "@/components/common/jalali-date-picker";
 import { PriceInput } from "@/components/common/price-input";
+import { CatalogIcon } from "@/components/common/catalog-icon";
 import { useDebounced } from "@/hooks/use-debounced";
 import { formatToman, toPersianDigits, cn } from "@/lib/utils";
 import moment from "moment-jalaali";
@@ -618,12 +619,18 @@ export default function NewOrderPage() {
                     type="button"
                     onClick={() => switchGarmentTab(g._id)}
                     className={cn(
-                      "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                       activeGarment === g._id
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-card hover:bg-accent"
                     )}
                   >
+                    <CatalogIcon
+                      icon={g.icon}
+                      image={g.image}
+                      size={16}
+                      className={activeGarment === g._id ? "text-primary-foreground" : "text-muted-foreground"}
+                    />
                     {g.title}
                     {g.isCustom && <span className="mr-1 text-xs opacity-60">★</span>}
                   </button>
@@ -649,6 +656,7 @@ export default function NewOrderPage() {
                                   setSelectedServices(v ? [...selectedServices, s._id] : selectedServices.filter((x) => x !== s._id));
                                 }}
                               />
+                              <CatalogIcon icon={s.icon} image={s.image} size={16} className="text-muted-foreground" />
                               <Label htmlFor={`svc-${s._id}`} className="cursor-pointer text-sm">
                                 {s.title}
                               </Label>
@@ -849,9 +857,21 @@ export default function NewOrderPage() {
                     {deliveryDate || "انتخاب تاریخ"}
                   </Button>
                   {showDatePicker && (
-                    <div className="absolute z-50 mt-1 left-0 right-0">
-                      <JalaliDatePicker value={deliveryDate} onChange={(v) => { setDeliveryDate(v); setShowDatePicker(false); }} minDate={todayJalali} />
-                    </div>
+                    <>
+                      {/* Mobile backdrop so taps outside the calendar close it */}
+                      <div
+                        className="fixed inset-0 z-40 bg-black/30 sm:hidden"
+                        onClick={() => setShowDatePicker(false)}
+                      />
+                      <div className="fixed inset-x-2 bottom-2 z-50 sm:absolute sm:inset-x-0 sm:bottom-auto sm:mt-1 sm:left-0 sm:right-0">
+                        <JalaliDatePicker
+                          value={deliveryDate}
+                          onChange={(v) => { setDeliveryDate(v); setShowDatePicker(false); }}
+                          onClose={() => setShowDatePicker(false)}
+                          minDate={todayJalali}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               </div>

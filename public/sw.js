@@ -10,7 +10,7 @@
  *  - skipWaiting + clientsClaim for immediate activation on new deploy
  */
 
-const CACHE_VERSION = "sepidno-v1";
+const CACHE_VERSION = "sepidno-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
 const API_CACHE = `${CACHE_VERSION}-api`;

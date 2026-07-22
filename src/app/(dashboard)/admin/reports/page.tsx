@@ -187,10 +187,10 @@ export default function AdminReportsPage() {
               <TableBody>
                 {rev.byBusiness.map((b, i) => (
                   <TableRow key={b.businessId}>
-                    <TableCell><span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{toPersianDigits(i + 1)}</span></TableCell>
-                    <TableCell className="font-medium">{b.businessName}</TableCell>
-                    <TableCell className="text-center">{toPersianDigits(b.orders)}</TableCell>
-                    <TableCell className="text-center font-medium">{formatToman(b.revenue)}</TableCell>
+                    <TableCell label="رتبه"><span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{toPersianDigits(i + 1)}</span></TableCell>
+                    <TableCell label="نام بیزینس" className="font-medium">{b.businessName}</TableCell>
+                    <TableCell label="تعداد سفارش" className="text-center">{toPersianDigits(b.orders)}</TableCell>
+                    <TableCell label="درآمد" className="text-center font-medium">{formatToman(b.revenue)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -219,9 +219,9 @@ export default function AdminReportsPage() {
               <TableBody>
                 {subs.plans.map((p) => (
                   <TableRow key={p.planId}>
-                    <TableCell className="font-medium">{p.planName}</TableCell>
-                    <TableCell className="text-center">{toPersianDigits(p.activeCount)}</TableCell>
-                    <TableCell className="text-center font-medium">{formatToman(p.totalRevenue)}</TableCell>
+                    <TableCell label="پلن" className="font-medium">{p.planName}</TableCell>
+                    <TableCell label="تعداد فعال" className="text-center">{toPersianDigits(p.activeCount)}</TableCell>
+                    <TableCell label="درآمد ماهانه" className="text-center font-medium">{formatToman(p.totalRevenue)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

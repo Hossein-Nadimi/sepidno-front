@@ -70,7 +70,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Nav */}
           <nav className="flex-1 space-y-1 overflow-y-auto p-3">
             {items.map((item) => {
-              const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              // Exact match OR nested route (href + "/" + something).
+              // Using startsWith alone causes /orders-calendar to also match /orders.
+              const active =
+                pathname === item.href ||
+                (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
               const Icon = item.icon;
               return (
                 <Link

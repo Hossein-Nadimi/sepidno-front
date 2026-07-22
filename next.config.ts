@@ -20,7 +20,6 @@ function resolveApiOrigin(): string {
 const API_ORIGIN = resolveApiOrigin();
 
 const nextConfig: NextConfig = {
-  // allowedDevOrigins: ["192.168.1.170"],
   // Proxy /uploads/* requests to the backend server so images load same-origin.
   async rewrites() {
     if (!API_ORIGIN) return []; // same-origin in production

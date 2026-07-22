@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Plus, Edit2, Trash2, Loader2, Save } from "lucide-react";
+import { BookOpen, Plus, Edit2, Trash2, Loader2, Save, Upload } from "lucide-react";
 import { adminService } from "@/services";
 import type { CatalogItem } from "@/types";
 import { PageHeader } from "@/components/common/page-header";
@@ -16,29 +16,42 @@ import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableLoading } from "@/components/common/loading";
+import { CatalogIcon } from "@/components/common/catalog-icon";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { toPersianDigits } from "@/lib/utils";
+import { toPersianDigits, resolveMediaUrl } from "@/lib/utils";
 import { toJalaliDateTime } from "@/lib/jalali";
 import toast from "react-hot-toast";
 
 const CATALOGS = [
-  { key: "garment-types", label: "انواع لباس" },
-  { key: "service-types", label: "انواع خدمت" },
-  { key: "fabric-types", label: "انواع پارچه" },
-  { key: "colors", label: "رنگ‌ها" },
-  { key: "inventory-item-types", label: "انواع اقلام انبار" },
-  { key: "order-statuses", label: "وضعیت‌های سفارش" },
-  { key: "sms-templates", label: "قالب‌های پیامک" },
-  { key: "receipt-templates", label: "قالب‌های قبض" },
+  { key: "garment-types", label: "انواع لباس", hasIcon: true },
+  { key: "service-types", label: "انواع خدمت", hasIcon: true },
+  { key: "fabric-types", label: "انواع پارچه", hasIcon: true },
+  { key: "colors", label: "رنگ‌ها", hasIcon: false },
+  { key: "inventory-item-types", label: "انواع اقلام انبار", hasIcon: true },
+  { key: "order-statuses", label: "وضعیت‌های سفارش", hasIcon: false },
+  { key: "sms-templates", label: "قالب‌های پیامک", hasIcon: false },
+  { key: "receipt-templates", label: "قالب‌های قبض", hasIcon: false },
 ];
+
+interface EditState {
+  id?: string;
+  title: string;
+  description: string;
+  icon: string;
+  image: string;
+  displayOrder: number;
+  active: boolean;
+  extra: Record<string, string>;
+}
 
 export default function AdminCatalogsPage() {
   const queryClient = useQueryClient();
   const [activeCatalog, setActiveCatalog] = useState(CATALOGS[0].key);
-  const [editing, setEditing] = useState<{ id?: string; title: string; description: string; displayOrder: number; active: boolean; extra: Record<string, string> } | null>(null);
+  const [editing, setEditing] = useState<EditState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CatalogItem | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-catalog", activeCatalog],
@@ -82,6 +95,8 @@ export default function AdminCatalogsPage() {
     const payload: Record<string, unknown> = {
       title: editing.title,
       description: editing.description,
+      icon: editing.icon,
+      image: editing.image,
       displayOrder: editing.displayOrder,
       active: editing.active,
     };
@@ -93,6 +108,21 @@ export default function AdminCatalogsPage() {
       updateMutation.mutate({ id: editing.id, payload });
     } else {
       createMutation.mutate(payload);
+    }
+  }
+
+  async function uploadImage(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const api = (await import("@/lib/api")).default;
+      const res = await api.post("/uploads/catalog-image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setEditing({ ...(editing as EditState), image: res.data.data.url });
+      toast.success("تصویر آپلود شد");
+    } catch {
+      toast.error("خطا در آپلود تصویر");
     }
   }
 
@@ -114,13 +144,16 @@ export default function AdminCatalogsPage() {
     extraFields.push({ key: "body", label: "متن قالب", type: "textarea" });
   }
 
+  // Should the icon fields be shown for the active catalog?
+  const showIconFields = CATALOGS.find((c) => c.key === activeCatalog)?.hasIcon ?? false;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="کاتالوگ‌های سراسری"
         description="مدیریت کاتالوگ‌های مشترک پلتفرم"
         actions={
-          <Button onClick={() => setEditing({ title: "", description: "", displayOrder: 0, active: true, extra: {} })}>
+          <Button onClick={() => setEditing({ title: "", description: "", icon: "", image: "", displayOrder: 0, active: true, extra: {} })}>
             <Plus className="size-4 ml-1" />
             آیتم جدید
           </Button>
@@ -145,6 +178,7 @@ export default function AdminCatalogsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {showIconFields && <TableHead className="w-12 text-center">آیکون</TableHead>}
                   <TableHead>عنوان</TableHead>
                   <TableHead>slug</TableHead>
                   <TableHead className="text-center">ترتیب</TableHead>
@@ -156,16 +190,23 @@ export default function AdminCatalogsPage() {
               <TableBody>
                 {items.map((item) => (
                   <TableRow key={item._id}>
-                    <TableCell className="font-medium">{item.title}</TableCell>
-                    <TableCell dir="ltr" className="text-xs text-muted-foreground">{item.slug}</TableCell>
-                    <TableCell className="text-center">{toPersianDigits(item.displayOrder)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{toJalaliDateTime(item.createdAt)}</TableCell>
-                    <TableCell className="text-center">
+                    {showIconFields && (
+                      <TableCell label="آیکون" className="text-center">
+                        <div className="flex justify-center">
+                          <CatalogIcon icon={item.icon} image={item.image} size={24} />
+                        </div>
+                      </TableCell>
+                    )}
+                    <TableCell label="عنوان" className="font-medium">{item.title}</TableCell>
+                    <TableCell label="slug" dir="ltr" className="text-xs text-muted-foreground">{item.slug}</TableCell>
+                    <TableCell label="ترتیب" className="text-center">{toPersianDigits(item.displayOrder)}</TableCell>
+                    <TableCell label="تاریخ ثبت" className="text-sm text-muted-foreground">{toJalaliDateTime(item.createdAt)}</TableCell>
+                    <TableCell label="وضعیت" className="text-center">
                       <Badge variant={item.active ? "default" : "secondary"}>
                         {item.active ? "فعال" : "غیرفعال"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell label="عملیات">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
@@ -175,6 +216,8 @@ export default function AdminCatalogsPage() {
                               id: item._id,
                               title: item.title,
                               description: item.description || "",
+                              icon: item.icon || "",
+                              image: item.image || "",
                               displayOrder: item.displayOrder,
                               active: item.active,
                               extra: {},
@@ -212,6 +255,74 @@ export default function AdminCatalogsPage() {
                 <Label>توضیحات</Label>
                 <Textarea rows={2} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
               </div>
+
+              {showIconFields && (
+                <>
+                  <div className="space-y-2">
+                    <Label>آیکون (نام lucide)</Label>
+                    <Input
+                      value={editing.icon}
+                      onChange={(e) => setEditing({ ...editing, icon: e.target.value })}
+                      placeholder="مثلاً: shirt, scissors, droplets"
+                      dir="ltr"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      نام آیکون از{" "}
+                      <a
+                        href="https://lucide.dev/icons"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        lucide.dev/icons
+                      </a>{" "}
+                      وارد کنید. اگر تصویر هم آپلود شده باشد، تصویر اولویت دارد.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>تصویر (اختیاری)</Label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={imageInputRef}
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadImage(file);
+                        }}
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={() => imageInputRef.current?.click()}>
+                        <Upload className="size-4 ml-1" />
+                        آپلود تصویر
+                      </Button>
+                      {editing.image && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => setEditing({ ...editing, image: "" })}
+                        >
+                          حذف تصویر
+                        </Button>
+                      )}
+                      <div className="flex size-10 items-center justify-center rounded border">
+                        {editing.image ? (
+                          <img
+                            src={resolveMediaUrl(editing.image)}
+                            alt=""
+                            className="size-10 rounded object-cover"
+                          />
+                        ) : (
+                          <CatalogIcon icon={editing.icon} size={20} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>ترتیب نمایش</Label>

@@ -335,10 +335,10 @@ export default function SubscriptionPage() {
                     const plan = typeof sub.subscriptionPlan === "object" ? sub.subscriptionPlan : null;
                     return (
                       <TableRow key={sub._id}>
-                        <TableCell className="font-medium">{plan?.name || "—"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{toJalali(sub.startDate)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{toJalali(sub.expireDate)}</TableCell>
-                        <TableCell className="text-center">
+                        <TableCell label="پلن" className="font-medium">{plan?.name || "—"}</TableCell>
+                        <TableCell label="تاریخ شروع" className="text-sm text-muted-foreground">{toJalali(sub.startDate)}</TableCell>
+                        <TableCell label="تاریخ انقضا" className="text-sm text-muted-foreground">{toJalali(sub.expireDate)}</TableCell>
+                        <TableCell label="وضعیت" className="text-center">
                           <Badge variant={sub.status === "active" ? "default" : sub.status === "expired" ? "secondary" : "outline"}>
                             {sub.status === "active" ? "فعال" : sub.status === "expired" ? "منقضی" : sub.status === "cancelled" ? "لغو شده" : "در انتظار"}
                           </Badge>

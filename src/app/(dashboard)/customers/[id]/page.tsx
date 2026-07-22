@@ -334,10 +334,10 @@ export default function CustomerDetailPage() {
                 <TableBody>
                   {ordersData.items.map((o) => (
                     <TableRow key={o._id}>
-                      <TableCell className="font-medium" dir="ltr">{o.orderNumber}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{toJalaliDateTime(o.acceptedAt)}</TableCell>
-                      <TableCell className="text-center">{formatToman(o.finalPrice)}</TableCell>
-                      <TableCell className="text-left">
+                      <TableCell label="شماره سفارش" className="font-medium" dir="ltr">{o.orderNumber}</TableCell>
+                      <TableCell label="تاریخ" className="text-sm text-muted-foreground">{toJalaliDateTime(o.acceptedAt)}</TableCell>
+                      <TableCell label="مبلغ" className="text-center">{formatToman(o.finalPrice)}</TableCell>
+                      <TableCell label="عملیات" className="text-left">
                         <Button variant="ghost" size="sm" onClick={() => router.push(`/orders/${o._id}`)}>
                           مشاهده
                         </Button>

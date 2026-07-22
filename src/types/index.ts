@@ -63,6 +63,10 @@ export interface CatalogItem {
   title: string;
   slug: string;
   description?: string;
+  /** Lucide icon name (e.g. "shirt") — shown in pickers if no image is set. */
+  icon?: string;
+  /** Optional image URL — shown if set (overrides icon). */
+  image?: string;
   displayOrder: number;
   active: boolean;
   createdAt: string;
@@ -400,6 +404,7 @@ export interface BusinessSettings {
   policies?: string;
   enabledServices: BusinessEnabledService[];
   urgentMultiplier: number;
+  maxDailyOrders?: number;
 }
 
 /* -------------------------------- Receipts -------------------------------- */

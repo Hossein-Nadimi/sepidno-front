@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ShoppingBag, Users, Tags, Boxes, Gift, MessageSquare, BarChart3, CreditCard,
-  ShieldCheck, Zap, Settings, Receipt,
+  ShieldCheck, Zap, Settings, Receipt, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +25,12 @@ const FEATURES = [
     title: "مدیریت سفارشات",
     desc: "ثبت سریع سفارشات با چک‌لیست آسیب‌ها، عکس‌ها و قیمت‌گذاری خودکار.",
     items: ["ثبت سفارش با چند آیتم", "چک‌لیست آسیب‌ها", "آپلود عکس", "چاپ قبض"],
+  },
+  {
+    icon: CalendarDays,
+    title: "تقویم سفارشات",
+    desc: "نمای ماهانه از ظرفیت روزهای پیش‌رو. با یک نگاه ببینید کدام روزها پر هستند و کدام روزها ظرفیت دارند. هنگام ثبت سفارش هم تعداد سفارشات هر روز را مستقیماً در تقویم ببینید.",
+    items: ["نمای ماهانه با تقویم جلالی", "نمایش تعداد سفارش هر روز", "هشدار روزهای پر (حداکثر روزانه)", "جزئیات سفارشات هر روز با کلیک"],
   },
   {
     icon: Users,
@@ -54,7 +60,7 @@ const FEATURES = [
     icon: MessageSquare,
     title: "پیامک خودکار",
     desc: "اطلاع‌رسانی خودکار به مشتریان در رویدادهای مهم.",
-    items: ["ثبت سفارش", "تکمیل سفارش", "آماده تحویل", "تولد مشتری"],
+    items: ["ثبت سفارش", "آماده تحویل", "کش‌بک وفاداری", "تولد مشتری"],
   },
   {
     icon: BarChart3,

@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { toPersianDigits } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { toPersianDigits, cn } from "@/lib/utils";
 
 /**
  * Price input with thousand separators.
- * - Shows formatted number with separators (e.g. 1,490,000) while typing
- * - Returns raw number to parent via onChange
- * - Works correctly in Firefox (which doesn't support inputmode separators)
+ *
+ * - Digits are entered RTL (right-to-left) so they appear from the right
+ *   side of the field — natural for Persian users.
+ * - The formatted value itself is the input value (no separate overlay),
+ *   so there is no overlap between what the user types and the formatted display.
+ * - Returns the raw number to the parent via onChange.
  */
 export function PriceInput({
   value,
@@ -31,35 +33,33 @@ export function PriceInput({
     if (value === 0) {
       setDisplay("");
     } else {
-      setDisplay(value.toLocaleString("en-US"));
+      // Show Persian digits with thousands separator
+      setDisplay(toPersianDigits(value.toLocaleString("en-US")));
     }
   }, [value]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Remove all non-digit characters
-    const raw = e.target.value.replace(/[^\d]/g, "");
-    const num = raw === "" ? 0 : parseInt(raw, 10);
+    // Strip anything that isn't a Persian or English digit
+    const raw = e.target.value.replace(/[^\d۰-۹]/g, "");
+    // Convert Persian digits to English for parsing
+    const normalized = raw.replace(/[۰-۹]/g, (d) =>
+      String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)),
+    );
+    const num = normalized === "" ? 0 : parseInt(normalized, 10);
     if (num < min) return;
-    setDisplay(raw === "" ? "" : num.toLocaleString("en-US"));
+    setDisplay(normalized === "" ? "" : toPersianDigits(num.toLocaleString("en-US")));
     onChange(num);
   }
 
   return (
-    <div className="relative">
-      <Input
-        type="text"
-        inputMode="numeric"
-        dir="ltr"
-        value={display}
-        onChange={handleChange}
-        placeholder={placeholder || "0"}
-        className={cn("text-left", className)}
-      />
-      {display && (
-        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          {toPersianDigits(value.toLocaleString("fa-IR"))}
-        </span>
-      )}
-    </div>
+    <Input
+      type="text"
+      inputMode="numeric"
+      dir="rtl"
+      value={display}
+      onChange={handleChange}
+      placeholder={placeholder || "۰"}
+      className={cn("text-right font-medium", className)}
+    />
   );
 }

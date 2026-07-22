@@ -106,6 +106,68 @@ export const orderService = {
   },
 };
 
+/* ------------------------------ Orders Calendar ---------------------------- */
+
+export interface CalendarDayInfo {
+  jalaliDate: string;
+  gregorianDate: string;
+  dayOfWeek: number; // 0=Saturday ... 6=Friday
+  orderCount: number;
+  isFull: boolean;
+  isPast: boolean;
+  isToday: boolean;
+  totalRevenue: number;
+  urgentCount: number;
+}
+
+export interface CalendarMonthResult {
+  jalaliMonth: string;
+  days: CalendarDayInfo[];
+  summary: {
+    totalOrders: number;
+    totalRevenue: number;
+    fullDays: number;
+    avgOrdersPerDay: number;
+    maxDailyOrders: number;
+  };
+}
+
+export interface CalendarDayOrder {
+  _id: string;
+  orderNumber: string;
+  customerName: string;
+  customerMobile: string;
+  finalPrice: number;
+  urgent: boolean;
+  statusTitle: string;
+  statusColor: string;
+  deliveryDate: string;
+}
+
+export interface CalendarDayDetail {
+  jalaliDate: string;
+  gregorianDate: string;
+  orderCount: number;
+  totalRevenue: number;
+  urgentCount: number;
+  isFull: boolean;
+  maxDailyOrders: number;
+  orders: CalendarDayOrder[];
+}
+
+export const calendarService = {
+  getMonth(jalaliMonth: string): Promise<CalendarMonthResult> {
+    return api
+      .get<SuccessResponse<CalendarMonthResult>>(`/laundry/orders/calendar?month=${encodeURIComponent(jalaliMonth)}`)
+      .then((r) => r.data.data);
+  },
+  getDay(jalaliDate: string): Promise<CalendarDayDetail> {
+    return api
+      .get<SuccessResponse<CalendarDayDetail>>(`/laundry/orders/calendar/day?date=${encodeURIComponent(jalaliDate)}`)
+      .then((r) => r.data.data);
+  },
+};
+
 /* --------------------------------- Pricing -------------------------------- */
 
 export interface PricingListParams {
@@ -384,6 +446,8 @@ export interface CombinedGarmentType {
   _id: string;
   title: string;
   slug: string;
+  icon?: string;
+  image?: string;
   isCustom: boolean;
 }
 
@@ -391,7 +455,7 @@ export const customGarmentService = {
   list(): Promise<CombinedGarmentType[]> {
     return api.get<SuccessResponse<CombinedGarmentType[]>>("/laundry/custom-garments").then((r) => r.data.data);
   },
-  create(payload: { title: string; description?: string }): Promise<unknown> {
+  create(payload: { title: string; description?: string; icon?: string; image?: string }): Promise<unknown> {
     return api.post<SuccessResponse<unknown>>("/laundry/custom-garments", payload).then((r) => r.data.data);
   },
   delete(id: string): Promise<void> {

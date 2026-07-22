@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { resolveMediaUrl } from "@/lib/utils";
+import { resolveMediaUrl, cn } from "@/lib/utils";
 
 const DAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 
@@ -41,6 +41,7 @@ export default function SettingsPage() {
     mobile: "",
     address: "",
     policies: "",
+    maxDailyOrders: 0,
   });
   const [workingHours, setWorkingHours] = useState<Array<{ day: number; open: string; close: string; closed: boolean }>>([]);
   const [smsForm, setSmsForm] = useState<{ smsEnabled: boolean; smsProvider: string; smsSender: string; notifications: Record<string, boolean>; urgentMultiplier: number }>({
@@ -74,6 +75,7 @@ export default function SettingsPage() {
       mobile: settings.mobile || "",
       address: settings.address || "",
       policies: settings.policies || "",
+      maxDailyOrders: (settings as { maxDailyOrders?: number }).maxDailyOrders ?? 0,
     });
     setWorkingHours(settings.workingHours?.length ? settings.workingHours : DAYS.map((_, i) => ({ day: i, open: "09:00", close: "21:00", closed: i === 6 })));
     setSmsForm({
@@ -104,7 +106,7 @@ export default function SettingsPage() {
   }
 
   const saveBusiness = useMutation({
-    mutationFn: () => settingsService.update({ ...businessForm, workingHours, urgentMultiplier: smsForm.urgentMultiplier }),
+    mutationFn: () => settingsService.update({ ...businessForm, workingHours, urgentMultiplier: smsForm.urgentMultiplier, maxDailyOrders: businessForm.maxDailyOrders }),
     onSuccess: () => {
       toast.success("اطلاعات کسب‌وکار ذخیره شد");
       queryClient.invalidateQueries({ queryKey: ["business-settings"] });
@@ -151,7 +153,7 @@ export default function SettingsPage() {
             title="راهنمای تنظیمات"
             sections={[
               { title: "تب کسب‌وکار", body: "نام خشکشویی، لوگو، تلفن، موبایل، آدرس، قوانین (نمایش در قبض)، ساعات کاری و ضریب سفارش فوری را تنظیم کنید." },
-              { title: "تب پیامک", body: "فعال/غیرفعال کردن ارسال پیامک و انتخاب رویدادهایی که می‌خواهید پیامک ارسال شود: ثبت سفارش، تکمیل سفارش، آماده تحویل، تولد مشتری." },
+              { title: "تب پیامک", body: "فعال/غیرفعال کردن ارسال پیامک و انتخاب رویدادهایی که می‌خواهید پیامک ارسال شود: ثبت سفارش، آماده تحویل، تولد مشتری. پیامک کش‌بک به‌طور خودکار هنگام تغییر وضعیت به «آماده تحویل» ارسال می‌شود، به شرطی که سیستم وفاداری فعال باشد." },
               { title: "تب قبض", body: "تعیین اینکه چه اطلاعاتی در قبض چاپ شود: لوگو، QR کد، بارکد، تلفن، قوانین." },
               { title: "تب وفاداری", body: "فعال‌سازی سیستم کش‌بک. تعیین نوع پاداش (درصدی یا مبلغ ثابت)، حداقل سفارش، حداکثر کش‌بک، مدت انقضا و امکان ترکیب با تخفیف." },
             ]}
@@ -160,11 +162,11 @@ export default function SettingsPage() {
       />
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-          <TabsTrigger value="business"><Store className="size-4 ml-1" />کسب‌وکار</TabsTrigger>
-          <TabsTrigger value="sms"><MessageSquare className="size-4 ml-1" />پیامک</TabsTrigger>
-          <TabsTrigger value="receipt"><Receipt className="size-4 ml-1" />قبض</TabsTrigger>
-          <TabsTrigger value="loyalty"><Gift className="size-4 ml-1" />وفاداری</TabsTrigger>
+        <TabsList className="grid !flex !h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-4">
+          <TabsTrigger value="business" className="!h-auto py-2 text-xs sm:text-sm"><Store className="size-4 ml-1 shrink-0" /><span className="truncate">کسب‌وکار</span></TabsTrigger>
+          <TabsTrigger value="sms" className="!h-auto py-2 text-xs sm:text-sm"><MessageSquare className="size-4 ml-1 shrink-0" /><span className="truncate">پیامک</span></TabsTrigger>
+          <TabsTrigger value="receipt" className="!h-auto py-2 text-xs sm:text-sm"><Receipt className="size-4 ml-1 shrink-0" /><span className="truncate">قبض</span></TabsTrigger>
+          <TabsTrigger value="loyalty" className="!h-auto py-2 text-xs sm:text-sm"><Gift className="size-4 ml-1 shrink-0" /><span className="truncate">وفاداری</span></TabsTrigger>
         </TabsList>
 
         {/* Business info */}
@@ -276,6 +278,21 @@ export default function SettingsPage() {
                 />
                 <p className="text-xs text-muted-foreground">مبلغ سفارش فوری در این ضریب ضرب می‌شود (پیش‌فرض: ۲)</p>
               </div>
+
+              {/* Daily order limits */}
+              <div className="space-y-2">
+                <Label>حداکثر سفارش روزانه</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={businessForm.maxDailyOrders ?? 0}
+                  onChange={(e) => setBusinessForm({ ...businessForm, maxDailyOrders: Number(e.target.value) })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  ۰ یعنی بدون محدودیت. وقتی عددی تنظیم شود، روزهایی که ظرفیتشان تکمیل شده در تقویم با رنگ قرمز
+                  نمایش داده می‌شوند. این محدودیت فقط هشدار است و ثبت سفارش را مسدود نمی‌کند.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -283,24 +300,40 @@ export default function SettingsPage() {
             <CardHeader><CardTitle>ساعات کاری</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {workingHours.map((wh, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <span className="w-20 text-sm font-medium">{DAYS[wh.day]}</span>
-                  <Input
-                    type="time"
-                    value={wh.open}
-                    onChange={(e) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, open: e.target.value } : w))}
-                    className="w-32"
-                    disabled={wh.closed}
-                  />
-                  <span className="text-muted-foreground">تا</span>
-                  <Input
-                    type="time"
-                    value={wh.close}
-                    onChange={(e) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, close: e.target.value } : w))}
-                    className="w-32"
-                    disabled={wh.closed}
-                  />
-                  <div className="flex items-center gap-2">
+                <div
+                  key={idx}
+                  className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:gap-3 sm:border-0 sm:p-0"
+                >
+                  <div className="flex items-center justify-between gap-2 sm:w-20 sm:shrink-0">
+                    <span className="text-sm font-medium">{DAYS[wh.day]}</span>
+                    {/* On mobile, put the switch here so it doesn't overflow */}
+                    <div className="flex items-center gap-1.5 sm:hidden">
+                      <Switch
+                        checked={!wh.closed}
+                        onCheckedChange={(v) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, closed: !v } : w))}
+                      />
+                      <Label className="text-xs text-muted-foreground">{wh.closed ? "تعطیل" : "باز"}</Label>
+                    </div>
+                  </div>
+                  <div className={cn("flex items-center gap-2", wh.closed && "opacity-50")}>
+                    <Input
+                      type="time"
+                      value={wh.open}
+                      onChange={(e) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, open: e.target.value } : w))}
+                      className="w-full sm:w-32"
+                      disabled={wh.closed}
+                    />
+                    <span className="text-muted-foreground shrink-0">تا</span>
+                    <Input
+                      type="time"
+                      value={wh.close}
+                      onChange={(e) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, close: e.target.value } : w))}
+                      className="w-full sm:w-32"
+                      disabled={wh.closed}
+                    />
+                  </div>
+                  {/* Switch on desktop only */}
+                  <div className="hidden items-center gap-2 sm:flex">
                     <Switch
                       checked={!wh.closed}
                       onCheckedChange={(v) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, closed: !v } : w))}
@@ -335,7 +368,6 @@ export default function SettingsPage() {
                 <div className="space-y-2 rounded-lg border p-3">
                   {[
                     { key: 'orderRegistered', label: 'ثبت سفارش' },
-                    { key: 'orderCompleted', label: 'تکمیل سفارش' },
                     { key: 'orderReady', label: 'آماده تحویل' },
                     { key: 'birthday', label: 'تولد مشتری' },
                   ].map((item) => (

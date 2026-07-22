@@ -19,6 +19,7 @@ import {
   Sparkles,
   Zap,
   TrendingUp,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import { usePublicPlans } from "@/hooks/use-public-plans";
 
 const FEATURES = [
   { icon: ShoppingBag, title: "مدیریت سفارشات", desc: "ثبت، پیگیری و چاپ قبض سفارشات با چک‌لیست آسیب‌ها" },
+  { icon: CalendarDays, title: "تقویم سفارشات", desc: "نمای ماهانه از ظرفیت روزهای پیش‌رو و تعداد سفارشات هر روز" },
   { icon: Users, title: "مدیریت مشتریان", desc: "پروفایل کامل مشتریان و تاریخچه خرید" },
   { icon: Tags, title: "قیمت‌گذاری هوشمند", desc: "ماتریس قیمت بر اساس نوع لباس و خدمت" },
   { icon: Boxes, title: "مدیریت انبار", desc: "کنترل موجودی و حرکت‌های انبار" },
@@ -52,9 +54,9 @@ const REVIEWS = [
 ];
 
 const FALLBACK_PLANS = [
-  { _id: "free", name: "رایگان", tagline: "شروع رایگان", description: "۱۴ روز رایگان — برای آشنایی با سامانه", features: ["مدیریت سفارشات", "مدیریت مشتریان", "مدیریت انبار", "مدیریت هزینه‌ها", "گزارشات خشکشویی", "سرویس پیامکی سفارشات", "سیستم وفاداری مشتری", "۵۰ اعتبار پیامکی"], monthlySmsQuota: 50, isActive: true, isComingSoon: false, sortOrder: 0, duration: 14, monthlyOriginalPrice: 0, quarterlyOriginalPrice: 0, semiAnnualOriginalPrice: 0, annualOriginalPrice: 0, monthlyPrice: 0, quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0, availableFeatures: [] },
-  { _id: "basic", name: "پایه", tagline: "محبوب‌ترین", description: "برای خشکشویی‌های کوچک و متوسط", features: ["مدیریت سفارشات", "مدیریت مشتریان", "مدیریت انبار", "مدیریت هزینه‌ها", "گزارشات خشکشویی", "سرویس پیامکی سفارشات", "سیستم وفاداری مشتری", "۵۰۰ اعتبار پیامکی"], monthlySmsQuota: 500, isActive: true, isComingSoon: false, sortOrder: 1, duration: 30, monthlyOriginalPrice: 1490000, quarterlyOriginalPrice: 3990000, semiAnnualOriginalPrice: 7590000, annualOriginalPrice: 14300000, monthlyPrice: 890000, quarterlyPrice: 2390000, semiAnnualPrice: 4560000, annualPrice: 8580000, availableFeatures: [] },
-  { _id: "pro", name: "حرفه‌ای", tagline: "به‌زودی", description: "برای خشکشویی‌های حرفه‌ای — به‌زودی", features: ["تمام امکانات پلن پایه", "اپ مشتری (سفارش آنلاین توسط مشتریان)", "۱۰۰۰ اعتبار پیامکی", "پشتیبانی اختصاصی"], monthlySmsQuota: 1000, isActive: false, isComingSoon: true, sortOrder: 2, duration: 30, monthlyOriginalPrice: 0, quarterlyOriginalPrice: 0, semiAnnualOriginalPrice: 0, annualOriginalPrice: 0, monthlyPrice: 0, quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0, availableFeatures: [] },
+  { _id: "free", name: "رایگان", tagline: "شروع رایگان", description: "۱۴ روز رایگان — برای آشنایی با سامانه", features: ["مدیریت سفارشات", "تقویم سفارشات", "مدیریت مشتریان", "مدیریت انبار", "مدیریت هزینه‌ها", "گزارشات خشکشویی", "سرویس پیامکی سفارشات", "سیستم وفاداری مشتری", "۵۰ اعتبار پیامکی"], monthlySmsQuota: 50, isActive: true, isComingSoon: false, sortOrder: 0, duration: 14, monthlyOriginalPrice: 0, quarterlyOriginalPrice: 0, semiAnnualOriginalPrice: 0, annualOriginalPrice: 0, monthlyPrice: 0, quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0, availableFeatures: [] },
+  { _id: "basic", name: "پایه", tagline: "محبوب‌ترین", description: "برای خشکشویی‌های کوچک و متوسط", features: ["مدیریت سفارشات", "تقویم سفارشات", "مدیریت مشتریان", "مدیریت انبار", "مدیریت هزینه‌ها", "گزارشات خشکشویی", "سرویس پیامکی سفارشات", "سیستم وفاداری مشتری", "۵۰۰ اعتبار پیامکی"], monthlySmsQuota: 500, isActive: true, isComingSoon: false, sortOrder: 1, duration: 30, monthlyOriginalPrice: 1490000, quarterlyOriginalPrice: 3990000, semiAnnualOriginalPrice: 7590000, annualOriginalPrice: 14300000, monthlyPrice: 890000, quarterlyPrice: 2390000, semiAnnualPrice: 4560000, annualPrice: 8580000, availableFeatures: [] },
+  { _id: "pro", name: "حرفه‌ای", tagline: "به‌زودی", description: "برای خشکشویی‌های حرفه‌ای — به‌زودی", features: ["تمام امکانات پلن پایه", "تقویم سفارشات با مدیریت ظرفیت روزانه", "اپ مشتری (سفارش آنلاین توسط مشتریان)", "۱۰۰۰ اعتبار پیامکی", "پشتیبانی اختصاصی"], monthlySmsQuota: 1000, isActive: false, isComingSoon: true, sortOrder: 2, duration: 30, monthlyOriginalPrice: 0, quarterlyOriginalPrice: 0, semiAnnualOriginalPrice: 0, annualOriginalPrice: 0, monthlyPrice: 0, quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0, availableFeatures: [] },
 ];
 
 const FAQ_ITEMS = [

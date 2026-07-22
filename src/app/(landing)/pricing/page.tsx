@@ -17,7 +17,7 @@ const FALLBACK_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 0,
     
     duration: 7,
-    features: ["تمام امکانات", "۵۰ پیامک", "۷ روز رایگان"],
+    features: ["تمام امکانات", "تقویم سفارشات", "۵۰ پیامک", "۷ روز رایگان"],
     monthlySmsQuota: 50,
     availableFeatures: ["orders", "customers", "loyalty", "inventory", "reports", "dashboard"], quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0,
     isActive: true,
@@ -30,7 +30,7 @@ const FALLBACK_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 290000,
     
     duration: 30,
-    features: ["تمام امکانات", "۵۰۰ پیامک ماهانه", "پشتیبانی اولویت‌دار"],
+    features: ["تمام امکانات", "تقویم سفارشات", "۵۰۰ پیامک ماهانه", "پشتیبانی اولویت‌دار"],
     monthlySmsQuota: 500,
     availableFeatures: ["orders", "customers", "loyalty", "inventory", "reports", "dashboard"], quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0,
     isActive: true,
@@ -43,7 +43,7 @@ const FALLBACK_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 690000,
     
     duration: 30,
-    features: ["تمام امکانات", "۲۰۰۰ پیامک ماهانه", "پشتیبانی اختصاصی"],
+    features: ["تمام امکانات", "تقویم سفارشات با مدیریت ظرفیت", "۲۰۰۰ پیامک ماهانه", "پشتیبانی اختصاصی"],
     monthlySmsQuota: 2000,
     availableFeatures: ["orders", "customers", "loyalty", "inventory", "reports", "dashboard"], quarterlyPrice: 0, semiAnnualPrice: 0, annualPrice: 0,
     isActive: true,

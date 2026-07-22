@@ -12,6 +12,7 @@ import {
   Package,
   BookOpen,
   ShieldCheck,
+  CalendarDays,
   Ticket as TicketIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -27,6 +28,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { title: "داشبورد", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard.read" },
   { title: "سفارشات", href: "/orders", icon: ShoppingBag, permission: "order.read" },
+  { title: "تقویم سفارشات", href: "/orders-calendar", icon: CalendarDays, permission: "order.read" },
   { title: "مشتریان", href: "/customers", icon: Users, permission: "customer.read" },
   { title: "قیمت‌گذاری", href: "/laundry-pricing", icon: Tags, permission: "pricing.read" },
   { title: "انبار", href: "/inventory", icon: Boxes, permission: "inventory.read" },

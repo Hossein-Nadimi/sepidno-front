@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { TableLoading } from "@/components/common/loading";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { CatalogIcon } from "@/components/common/catalog-icon";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -553,19 +554,28 @@ export default function OrderDetailPage() {
               return (
                 <div key={idx} className="rounded-lg border p-4">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold">{garment?.title || "—"}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">خدمات: {services || "—"}</p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                        <Badge variant="outline">تعداد: {toPersianDigits(item.quantity)}</Badge>
-                        {color && <Badge variant="outline">رنگ: {color.title}</Badge>}
-                        {fabric && <Badge variant="outline">پارچه: {fabric.title}</Badge>}
-                        {item.brand && <Badge variant="outline">برند: {item.brand}</Badge>}
-                        {item.size && <Badge variant="outline">سایز: {item.size}</Badge>}
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <CatalogIcon
+                          icon={(garment as { icon?: string } | null)?.icon}
+                          image={(garment as { image?: string } | null)?.image}
+                          size={20}
+                        />
                       </div>
-                      {item.description && (
-                        <p className="mt-2 text-sm">{item.description}</p>
-                      )}
+                      <div>
+                        <h3 className="font-semibold">{garment?.title || "—"}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">خدمات: {services || "—"}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          <Badge variant="outline">تعداد: {toPersianDigits(item.quantity)}</Badge>
+                          {color && <Badge variant="outline">رنگ: {color.title}</Badge>}
+                          {fabric && <Badge variant="outline">پارچه: {fabric.title}</Badge>}
+                          {item.brand && <Badge variant="outline">برند: {item.brand}</Badge>}
+                          {item.size && <Badge variant="outline">سایز: {item.size}</Badge>}
+                        </div>
+                        {item.description && (
+                          <p className="mt-2 text-sm">{item.description}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="text-left">
                       <p className="text-sm text-muted-foreground">قیمت واحد: {formatToman(item.unitPrice || 0)}</p>

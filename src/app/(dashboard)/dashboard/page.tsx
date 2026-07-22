@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import type { DashboardData } from "@/types";
 import {
   ShoppingCart,
@@ -15,6 +16,9 @@ import {
   TrendingUp,
   Award,
   Shirt,
+  ChevronLeft,
+  Zap,
+  ShoppingCart as ShoppingCartIcon,
 } from "lucide-react";
 import {
   AreaChart,
@@ -27,7 +31,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { dashboardService } from "@/services";
+import moment from "moment-jalaali";
+import { dashboardService, calendarService } from "@/services";
 import { useAuthStore } from "@/store/auth";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
@@ -36,7 +41,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { formatNumber, formatToman, toPersianDigits } from "@/lib/utils";
+import { jalaliStringToLongLabel } from "@/lib/jalali";
 import { SuperAdminDashboard } from "@/features/dashboard/super-admin-dashboard";
+
+moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
 
 export default function DashboardPage() {
   const [chart, setChart] = useState<"daily" | "weekly" | "monthly">("daily");
@@ -47,6 +55,28 @@ export default function DashboardPage() {
     queryKey: ["dashboard", chart],
     queryFn: () => dashboardService.get({ chart }),
   });
+
+  // Fetch current month's calendar data for the dashboard widget
+  const currentMonth = moment().format("jYYYY/jMM");
+  const { data: calendarData } = useQuery({
+    queryKey: ["orders-calendar", currentMonth],
+    queryFn: () => calendarService.getMonth(currentMonth),
+    enabled: !isSuperAdmin,
+  });
+
+  // Build the next 7 days from the calendar data
+  const upcomingDays = (() => {
+    if (!calendarData?.days) return [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return calendarData.days
+      .filter((d) => {
+        const dayDate = new Date(d.gregorianDate);
+        dayDate.setHours(0, 0, 0, 0);
+        return dayDate >= today;
+      })
+      .slice(0, 7);
+  })();
 
   if (isLoading) {
     return (
@@ -170,6 +200,93 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Orders calendar widget — 7 upcoming days.
+          Placed RIGHT after the KPI grid so the laundry can see upcoming
+          capacity before scrolling down to charts. */}
+      {upcomingDays.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="size-5 text-primary" />
+                تقویم سفارشات — ۷ روز آینده
+              </CardTitle>
+              <CardDescription className="mt-1">نمای ظرفیت روزهای پیش‌رو</CardDescription>
+            </div>
+            <Link
+              href="/orders-calendar"
+              className="flex shrink-0 items-center gap-1 text-xs text-primary hover:underline"
+            >
+              مشاهده تقویم کامل
+              <ChevronLeft className="size-3" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
+              {upcomingDays.map((day) => {
+                const maxDaily = calendarData?.summary.maxDailyOrders ?? 0;
+                const longLabel = jalaliStringToLongLabel(day.jalaliDate);
+                return (
+                  <Link
+                    key={day.jalaliDate}
+                    href="/orders-calendar"
+                    className={[
+                      "flex flex-col gap-1.5 rounded-lg border p-3 transition hover:scale-[1.01] hover:shadow-md",
+                      day.isToday
+                        ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                        : "border-border",
+                      day.isFull
+                        ? "bg-red-50 dark:bg-red-950/20"
+                        : day.orderCount > 0
+                          ? "bg-emerald-50 dark:bg-emerald-950/20"
+                          : "bg-card",
+                    ].join(" ")}
+                  >
+                    {/* Row 1: weekday + day + month name (full) */}
+                    <div className="flex items-center gap-1.5 text-sm font-bold">
+                      {day.isFull && <AlertTriangle className="size-3.5 text-red-500" />}
+                      <span className={day.isFull ? "text-red-700 dark:text-red-400" : ""}>{longLabel}</span>
+                    </div>
+
+                    {/* Row 2: order count / max daily */}
+                    <div className="flex items-center gap-1.5 text-sm">
+                      <ShoppingCartIcon className="size-3.5 text-muted-foreground" />
+                      <span className="font-semibold">{toPersianDigits(day.orderCount)} سفارش</span>
+                      {maxDaily > 0 && (
+                        <span className="text-muted-foreground">
+                          / {toPersianDigits(maxDaily)}
+                        </span>
+                      )}
+                      {day.urgentCount > 0 && (
+                        <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                          <Zap className="size-3" />
+                          {toPersianDigits(day.urgentCount)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Row 3: revenue (bigger font) */}
+                    {day.orderCount > 0 ? (
+                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                        {formatToman(day.totalRevenue)}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">بدون سفارش</div>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+            {(calendarData?.summary.maxDailyOrders ?? 0) > 0 && (
+              <div className="mt-3 text-xs text-muted-foreground">
+                حداکثر ظرفیت روزانه: {toPersianDigits(calendarData!.summary.maxDailyOrders)} سفارش —
+                روزهای پر با رنگ قرمز نشان داده می‌شوند.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -190,7 +307,14 @@ export default function DashboardPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis
+                  stroke="var(--muted-foreground)"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value: number) => toPersianDigits(value.toLocaleString("en-US"))}
+                  width={80}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "var(--background)",

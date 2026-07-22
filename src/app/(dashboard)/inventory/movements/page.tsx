@@ -57,14 +57,14 @@ export default function MovementsPage() {
                 <TableBody>
                   {items.map((m) => (
                     <TableRow key={m._id}>
-                      <TableCell className="text-sm text-muted-foreground">{toJalaliDateTime(m.createdAt)}</TableCell>
-                      <TableCell>
+                      <TableCell label="تاریخ" className="text-sm text-muted-foreground">{toJalaliDateTime(m.createdAt)}</TableCell>
+                      <TableCell label="نوع">
                         <Badge variant={m.type === "stock_in" ? "default" : m.type === "stock_out" ? "destructive" : "secondary"}>
                           {m.type === "stock_in" ? "ورود" : m.type === "stock_out" ? "خروج" : "تعدیل"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">{toPersianDigits(m.quantity)}</TableCell>
-                      <TableCell>{m.description || "—"}</TableCell>
+                      <TableCell label="تعداد" className="text-center">{toPersianDigits(m.quantity)}</TableCell>
+                      <TableCell label="توضیحات">{m.description || "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

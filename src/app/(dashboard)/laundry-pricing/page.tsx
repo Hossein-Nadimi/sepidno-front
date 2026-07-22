@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tags, Save, Loader2, Edit2, Check, X, Plus, Trash2, Shirt } from "lucide-react";
+import { Tags, Save, Loader2, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { pricingService, catalogService, customGarmentService } from "@/services";
 import type { GarmentType, ServiceType, Pricing } from "@/types";
@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { CatalogIcon } from "@/components/common/catalog-icon";
 import { formatToman, toPersianDigits, cn } from "@/lib/utils";
 import type { CombinedGarmentType } from "@/services";
 
@@ -215,15 +216,15 @@ export default function PricingPage() {
 
       {/* Custom garment management */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-4">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div>
               <h3 className="font-semibold">انواع لباس اختصاصی</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                انواع لباس مخصوص کسب‌وکار خود را اضافه کنید. این موارد فقط برای شما نمایش داده می‌شوند.
+                انواع لباس مخصوص کسب‌وکار خود را اضافه کنید.
               </p>
             </div>
-            <Button onClick={() => setShowCustomDialog(true)}>
+            <Button onClick={() => setShowCustomDialog(true)} className="w-full sm:w-auto shrink-0">
               <Plus className="size-4 ml-1" />
               نوع لباس جدید
             </Button>
@@ -232,7 +233,7 @@ export default function PricingPage() {
             <div className="mt-4 flex flex-wrap gap-2">
               {(customGarments || []).filter((g: CombinedGarmentType) => g.isCustom).map((g: CombinedGarmentType) => (
                 <div key={g._id} className="flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm">
-                  <Shirt className="size-3.5 text-primary ml-1" />
+                  <CatalogIcon icon={g.icon} image={g.image} size={14} className="text-primary ml-1" />
                   <span className="font-medium">{g.title}</span>
                   <span className="text-xs text-muted-foreground">★ اختصاصی</span>
                   <button
@@ -264,30 +265,46 @@ export default function PricingPage() {
         </Card>
       ) : (
         <>
-          {/* Tabs for garment types (global + custom) */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="flex-wrap h-auto">
-              {garmentsList.map((g: GarmentType & { isCustom?: boolean }) => {
-                const pricedCount = servicesList.filter((s: ServiceType) => priceMap.has(`${g._id}-${s._id}`)).length;
-                return (
-                  <TabsTrigger key={g._id} value={g._id} className="gap-2">
-                    {g.title}
-                    {g.isCustom && <span className="text-xs opacity-60" title="اختصاصی">★</span>}
-                    <span className={cn(
-                      "rounded-full px-1.5 py-0.5 text-xs",
-                      pricedCount === servicesList.length
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30"
-                        : pricedCount > 0
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {toPersianDigits(pricedCount)}/{toPersianDigits(servicesList.length)}
-                    </span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </Tabs>
+          {/* Garment type selector — wraps naturally on all screen sizes */}
+          <div className="flex flex-wrap gap-2">
+            {garmentsList.map((g: GarmentType & { isCustom?: boolean; icon?: string; image?: string }) => {
+              const pricedCount = servicesList.filter((s: ServiceType) => priceMap.has(`${g._id}-${s._id}`)).length;
+              const isActive = activeTab === g._id;
+              return (
+                <button
+                  key={g._id}
+                  type="button"
+                  onClick={() => setActiveTab(g._id)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-2 sm:text-sm",
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:bg-accent",
+                  )}
+                >
+                  <CatalogIcon
+                    icon={g.icon}
+                    image={g.image}
+                    size={14}
+                    className={isActive ? "opacity-90" : "opacity-70"}
+                  />
+                  <span className="whitespace-nowrap">{g.title}</span>
+                  {g.isCustom && <span className="text-xs opacity-60" title="اختصاصی">★</span>}
+                  <span className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs",
+                    pricedCount === servicesList.length
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30"
+                      : pricedCount > 0
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30"
+                      : "bg-muted text-muted-foreground",
+                    isActive && "bg-background/20 text-primary-foreground"
+                  )}>
+                    {toPersianDigits(pricedCount)}/{toPersianDigits(servicesList.length)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           {/* Service prices for selected garment */}
           {activeTab && (() => {
@@ -311,12 +328,12 @@ export default function PricingPage() {
                       return (
                         <div
                           key={s._id}
-                          className="flex flex-col gap-2 p-4 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
+                          className="flex flex-col gap-2 p-3 hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between sm:p-4"
                         >
                           {/* Left: icon + title — click to edit */}
                           <button
                             type="button"
-                            className="flex items-center gap-3 flex-1 text-right"
+                            className="flex items-center gap-3 flex-1 text-right min-w-0"
                             onClick={() => setEditing({
                               garment: selectedGarment._id,
                               garmentTitle: selectedGarment.title,
@@ -329,7 +346,7 @@ export default function PricingPage() {
                             })}
                           >
                             <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-                              <Tags className="size-5" />
+                              <CatalogIcon icon={s.icon} image={s.image} size={20} />
                             </div>
                             <div className="min-w-0">
                               <p className={cn("font-medium", !isActive && "text-muted-foreground line-through")}>{s.title}</p>
@@ -339,8 +356,8 @@ export default function PricingPage() {
                             </div>
                           </button>
 
-                          {/* Right: price + switch + edit */}
-                          <div className="flex items-center gap-3 justify-end">
+                          {/* Right: price + switch + edit — wraps on mobile */}
+                          <div className="flex items-center gap-2 justify-between sm:gap-3 sm:justify-end pl-13 sm:pl-0">
                             {isPriced ? (
                               <span className={cn("font-medium text-sm", !isActive && "text-muted-foreground")}>
                                 {formatToman(p.price)}
@@ -366,7 +383,7 @@ export default function PricingPage() {
                             )}
 
                             {/* Active/Inactive switch — ALWAYS shown (even without price) */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
                               <span className={cn("text-xs whitespace-nowrap", isActive ? "text-emerald-600" : "text-muted-foreground")}>
                                 {isActive ? "فعال" : "غیرفعال"}
                               </span>

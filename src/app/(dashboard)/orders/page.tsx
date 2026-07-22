@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDebounced } from "@/hooks/use-debounced";
 import { formatToman, toPersianDigits } from "@/lib/utils";
-import { toJalaliDateTime } from "@/lib/jalali";
+import { toJalaliDateTime, toJalali } from "@/lib/jalali";
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -76,28 +76,30 @@ export default function OrdersPage() {
       />
 
       <Card>
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        <CardContent className="flex flex-col gap-3 p-3 sm:p-4">
           <SearchInput
             value={search}
             onChange={(v) => { setSearch(v); setPage(1); }}
-            placeholder="جستجو با شماره سفارش یا موبایل مشتری"
-            className="sm:flex-1"
+            placeholder="جستجو با شماره سفارش یا موبایل"
+            className="w-full"
           />
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground" />
-            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="همه وضعیت‌ها" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه وضعیت‌ها</SelectItem>
-                {statuses?.map((s) => (
-                  <SelectItem key={s._id} value={s._id}>{s.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center gap-2">
+              <Filter className="size-4 shrink-0 text-muted-foreground" />
+              <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="همه وضعیت‌ها" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">همه وضعیت‌ها</SelectItem>
+                  {statuses?.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>{s.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="مرتب‌سازی" />
               </SelectTrigger>
               <SelectContent>
@@ -165,7 +167,7 @@ export default function OrdersPage() {
                           </div>
                         </TableCell>
                         <TableCell label="مشتری">{customer ? `${customer.firstName} ${customer.lastName}` : "—"}</TableCell>
-                        <TableCell label="تاریخ تحویل" className="text-sm text-muted-foreground">{toJalaliDateTime(o.deliveryDate)}</TableCell>
+                        <TableCell label="تاریخ تحویل" className="text-sm text-muted-foreground">{toJalali(o.deliveryDate)}</TableCell>
                         <TableCell label="آیتم‌ها" className="text-center">{toPersianDigits(o.items.length)}</TableCell>
                         <TableCell label="مبلغ" className="text-center font-medium">{formatToman(o.finalPrice)}</TableCell>
                         <TableCell label="وضعیت" className="text-center">
