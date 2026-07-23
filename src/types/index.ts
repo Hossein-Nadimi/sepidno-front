@@ -189,7 +189,7 @@ export interface SmsPackage {
   title: string;
   slug: string;
   description?: string;
-  smsCount: number;
+  creditCount: number;
   price: number;
   expireDays: number;
   active: boolean;

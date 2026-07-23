@@ -270,7 +270,7 @@ export function BusinessDetailDialog({
                 <SelectContent>
                   {smsPackagesData?.items.map((p) => (
                     <SelectItem key={p._id} value={p._id}>
-                      {p.title} — {toPersianDigits(p.smsCount)} پیامک
+                      {p.title} — {toPersianDigits(p.creditCount)} پیامک
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -147,8 +147,8 @@ export default function SmsPage() {
             <EmptyState icon={Package} title="بسته‌ای برای خرید در دسترس نیست" />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {packages.items.map((pkg: { _id: string; title: string; description?: string; creditCount?: number; smsCount?: number; price: number; expireDays: number }) => {
-                const credits = pkg.creditCount ?? pkg.smsCount ?? 0;
+              {packages.items.map((pkg: { _id: string; title: string; description?: string; creditCount: number; price: number; expireDays: number }) => {
+                const credits = pkg.creditCount ?? 0;
                 return (
                   <Card key={pkg._id}>
                     <CardContent className="p-6">

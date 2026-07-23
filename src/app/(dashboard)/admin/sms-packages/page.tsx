@@ -24,7 +24,7 @@ import toast from "react-hot-toast";
 const EMPTY: Partial<SmsPackage> = {
   title: "",
   description: "",
-  smsCount: 100,
+  creditCount: 100,
   price: 0,
   expireDays: 0,
   active: true,
@@ -116,7 +116,7 @@ export default function AdminSmsPackagesPage() {
                   </Badge>
                 </div>
                 <div className="mb-4 text-center">
-                  <p className="text-3xl font-bold text-primary">{toPersianDigits(pkg.smsCount)}</p>
+                  <p className="text-3xl font-bold text-primary">{toPersianDigits(pkg.creditCount)}</p>
                   <p className="text-sm text-muted-foreground">پیامک</p>
                   <p className="mt-2 text-lg font-medium">{formatToman(pkg.price)}</p>
                   {pkg.expireDays > 0 && (
@@ -156,7 +156,7 @@ export default function AdminSmsPackagesPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>تعداد پیامک</Label>
-                  <Input type="number" min={1} value={editing.smsCount ?? 100} onChange={(e) => setEditing({ ...editing, smsCount: Number(e.target.value) })} />
+                  <Input type="number" min={1} value={editing.creditCount ?? 100} onChange={(e) => setEditing({ ...editing, creditCount: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-2">
                   <Label>قیمت (تومان)</Label>
