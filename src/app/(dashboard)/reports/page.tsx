@@ -17,7 +17,7 @@ import {
   Calendar,
   PieChart as PieIcon,
 } from "lucide-react";
-import { reportService, type YearlyOverview } from "@/services";
+import { reportService, expenseService, type YearlyOverview } from "@/services";
 import { PageHeader } from "@/components/common/page-header";
 import { PageHelp } from "@/components/common/page-help";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -67,6 +67,7 @@ export default function ReportsPage() {
   const yearOptions = getJalaliYearOptions();
 
   const { data: revenue } = useQuery({ queryKey: ["report-revenue"], queryFn: () => reportService.revenue({ preset: "thisMonth" }), enabled: viewMode === "monthly" });
+  const { data: expenseStats } = useQuery({ queryKey: ["report-expenses-stats"], queryFn: () => expenseService.stats({ preset: "thisMonth" }), enabled: viewMode === "monthly" });
   const { data: orders } = useQuery({ queryKey: ["report-orders"], queryFn: () => reportService.orders({ preset: "thisMonth" }), enabled: viewMode === "monthly" });
   const { data: customers } = useQuery({ queryKey: ["report-customers"], queryFn: () => reportService.customers({ preset: "thisMonth" }), enabled: viewMode === "monthly" });
   const { data: services } = useQuery({ queryKey: ["report-services"], queryFn: () => reportService.services({ preset: "thisMonth" }), enabled: viewMode === "monthly" });
@@ -81,6 +82,7 @@ export default function ReportsPage() {
   });
 
   const revenueData = (revenue as { daily?: Array<{ date: string; jalaliDate: string; revenue: number; count: number }> })?.daily?.map((r) => ({ name: r.jalaliDate, revenue: r.revenue })) || [];
+  const expenseDailyData = (expenseStats as { daily?: Array<{ date: string; jalaliDate: string; total: number; count: number }> } | undefined)?.daily?.map((d) => ({ name: d.jalaliDate, total: d.total })) || [];
   const servicesData = (services as { mostUsed?: Array<{ title: string; count: number; revenue: number }> })?.mostUsed?.slice(0, 8) || [];
   const garmentsData = (garments as { mostFrequent?: Array<{ title: string; count: number }> })?.mostFrequent?.slice(0, 8) || [];
   const cashbackStats = cashback as { generated?: number; used?: number; expired?: number } | undefined;
@@ -98,6 +100,7 @@ export default function ReportsPage() {
   const monthlyData = (yearly?.months || []).map((m) => ({
     name: m.name,
     درآمد: m.revenue,
+    هزینه: m.expenses ?? 0,
     سفارشات: m.count,
   }));
 
@@ -164,10 +167,25 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Yearly stats */}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">درآمد کل سال</p>
                   <p className="mt-1 text-lg font-bold text-primary">{formatToman(yearly?.totalRevenue ?? 0)}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">هزینه کل سال</p>
+                  <p className="mt-1 text-lg font-bold text-red-600 dark:text-red-400">{formatToman(yearly?.totalExpenses ?? 0)}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">سود کل سال</p>
+                  {(() => {
+                    const profit = yearly?.totalProfit ?? (yearly?.totalRevenue ?? 0);
+                    return (
+                      <p className={`mt-1 text-lg font-bold ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                        {formatToman(profit)}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">تعداد سفارشات</p>
@@ -176,10 +194,6 @@ export default function ReportsPage() {
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">مشتریان جدید</p>
                   <p className="mt-1 text-lg font-bold">{toPersianDigits(yearly?.newCustomers ?? 0)}</p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-xs text-muted-foreground">میانگین ارزش سفارش</p>
-                  <p className="mt-1 text-lg font-bold">{formatToman(yearly?.averageOrderValue ?? 0)}</p>
                 </div>
               </div>
 
@@ -200,17 +214,18 @@ export default function ReportsPage() {
                     <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => toPersianDigits(v)} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-                      formatter={(v, name) => name === "درآمد" ? [formatToman(Number(v)), name as string] : [toPersianDigits(Number(v)), name as string]}
+                      formatter={(v, name) => (name === "درآمد" || name === "هزینه") ? [formatToman(Number(v)), name as string] : [toPersianDigits(Number(v)), name as string]}
                     />
                     <Legend />
                     <Bar dataKey="درآمد" fill="url(#monthlyRevenue)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="هزینه" fill="var(--destructive)" radius={[6, 6, 0, 0]} />
                     <Bar dataKey="سفارشات" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
 
               {/* Monthly breakdown table */}
-              {yearly && yearly.months.some((m) => m.count > 0) && (
+              {yearly && yearly.months.some((m) => m.count > 0 || m.expenses) && (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -218,19 +233,39 @@ export default function ReportsPage() {
                         <th className="p-2 text-right">ماه</th>
                         <th className="p-2 text-center">تعداد سفارش</th>
                         <th className="p-2 text-center">درآمد</th>
+                        <th className="p-2 text-center">هزینه‌ها</th>
+                        <th className="p-2 text-center">سود</th>
                         <th className="p-2 text-center">میانگین سفارش</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {yearly.months.map((m) => (
-                        <tr key={m.month} className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="p-2 font-medium">{m.name}</td>
-                          <td className="p-2 text-center">{toPersianDigits(m.count)}</td>
-                          <td className="p-2 text-center">{formatToman(m.revenue)}</td>
-                          <td className="p-2 text-center text-muted-foreground">{m.count > 0 ? formatToman(Math.round(m.revenue / m.count)) : "—"}</td>
-                        </tr>
-                      ))}
+                      {yearly.months.map((m) => {
+                        const expenses = m.expenses ?? 0;
+                        const profit = m.profit ?? (m.revenue - expenses);
+                        return (
+                          <tr key={m.month} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="p-2 font-medium">{m.name}</td>
+                            <td className="p-2 text-center">{toPersianDigits(m.count)}</td>
+                            <td className="p-2 text-center text-emerald-600 dark:text-emerald-400">{formatToman(m.revenue)}</td>
+                            <td className="p-2 text-center text-red-600 dark:text-red-400">{expenses > 0 ? formatToman(expenses) : "—"}</td>
+                            <td className={`p-2 text-center font-medium ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{expenses > 0 ? formatToman(profit) : "—"}</td>
+                            <td className="p-2 text-center text-muted-foreground">{m.count > 0 ? formatToman(Math.round(m.revenue / m.count)) : "—"}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
+                    {yearly && (
+                      <tfoot>
+                        <tr className="border-t-2 font-bold">
+                          <td className="p-2">جمع کل</td>
+                          <td className="p-2 text-center">{toPersianDigits(yearly.totalOrders)}</td>
+                          <td className="p-2 text-center text-emerald-600 dark:text-emerald-400">{formatToman(yearly.totalRevenue)}</td>
+                          <td className="p-2 text-center text-red-600 dark:text-red-400">{formatToman(yearly.totalExpenses ?? 0)}</td>
+                          <td className={`p-2 text-center ${(yearly.totalProfit ?? yearly.totalRevenue) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatToman(yearly.totalProfit ?? yearly.totalRevenue)}</td>
+                          <td className="p-2 text-center text-muted-foreground">—</td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               )}
@@ -275,6 +310,37 @@ export default function ReportsPage() {
                       formatter={(v) => [formatToman(Number(v)), "درآمد"]}
                     />
                     <Area type="monotone" dataKey="revenue" stroke="var(--chart-1)" strokeWidth={2} fill="url(#r)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Expense chart - current month daily */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Wallet className="size-5" />روند هزینه روزانه (ماه جاری)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {expenseDailyData.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">داده‌ای برای نمایش وجود ندارد</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={expenseDailyData}>
+                    <defs>
+                      <linearGradient id="e" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--destructive)" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="var(--destructive)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                      formatter={(v) => [formatToman(Number(v)), "هزینه"]}
+                    />
+                    <Area type="monotone" dataKey="total" stroke="var(--destructive)" strokeWidth={2} fill="url(#e)" />
                   </AreaChart>
                 </ResponsiveContainer>
               )}

@@ -45,6 +45,8 @@ interface CartItem {
   serviceTitles: string[];
   unitPrice: number;
   customPrices: Record<string, number>;
+  /** When true, quantity is meterage (متراژ) and accepts decimals. */
+  isPricedPerMeter?: boolean;
   // Optional details
   color?: string;
   fabric?: string;
@@ -153,6 +155,11 @@ export default function NewOrderPage() {
     ? selectedServices.reduce((sum, svcId) => sum + resolveServicePrice(activeGarment, svcId), 0)
     : 0;
 
+  // Is the active garment priced per meter? (e.g. پرده)
+  const activeGarmentIsPerMeter = activeGarment
+    ? (garments?.find((g: CombinedGarmentType) => g._id === activeGarment)?.isPricedPerMeter ?? false)
+    : false;
+
   // Cart totals
   const totalPrice = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const afterDiscount = Math.max(0, totalPrice - discount);
@@ -194,11 +201,13 @@ export default function NewOrderPage() {
   // Create order
   const createMutation = useMutation({
     mutationFn: () => {
-      const m = moment(deliveryDate, "jYYYY/jMM/jDD", true);
-      if (!m.isValid()) throw new Error("Invalid date");
+      if (!deliveryDate) throw new Error("تاریخ تحویل را انتخاب کنید");
+      // Send the Jalali date string directly (e.g. "1404/05/03").
+      // The backend converts it to a UTC Date via jalaliDayRange(), which
+      // is timezone-safe. This avoids any moment-jalaali UTC vs local issues.
       return orderService.create({
         customer: selectedCustomer!._id,
-        deliveryDate: m.toDate().toISOString(),
+        deliveryDate,
         discount,
         notes,
         urgent,
@@ -221,6 +230,8 @@ export default function NewOrderPage() {
     onSuccess: () => {
       toast.success("سفارش با موفقیت ثبت شد");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders-calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       router.push("/orders");
     },
   });
@@ -354,6 +365,7 @@ export default function NewOrderPage() {
           serviceTitles: svcTitles,
           unitPrice,
           customPrices,
+          isPricedPerMeter: garment?.isPricedPerMeter ?? false,
           color: draft.detailForm.color || undefined,
           fabric: draft.detailForm.fabric || undefined,
           brand: draft.detailForm.brand || undefined,
@@ -394,9 +406,11 @@ export default function NewOrderPage() {
 
   // Update quantity in cart
   function updateCartQty(idx: number, qty: number) {
-    if (qty < 1) return;
+    const isPerMeter = cart[idx]?.isPricedPerMeter;
+    const min = isPerMeter ? 0.1 : 1;
+    if (qty < min) return;
     const next = [...cart];
-    next[idx].quantity = qty;
+    next[idx].quantity = isPerMeter ? Math.round(qty * 100) / 100 : Math.floor(qty);
     setCart(next);
   }
 
@@ -689,19 +703,45 @@ export default function NewOrderPage() {
                     </div>
                   </div>
 
-                  {/* Quantity — stacked on mobile, side-by-side on desktop */}
+                  {/* Quantity / Meterage — stacked on mobile, side-by-side on desktop.
+                      For per-meter garments (e.g. پرده), the field accepts decimals. */}
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                     <div className="flex items-center gap-2">
-                      <Button type="button" variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9 shrink-0"
+                        onClick={() => setQuantity(Math.max(activeGarmentIsPerMeter ? 0.1 : 1, +(quantity - (activeGarmentIsPerMeter ? 0.5 : 1)).toFixed(2)))}
+                      >
                         <span className="text-lg">−</span>
                       </Button>
-                      <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))} className="w-16 text-center" />
-                      <Button type="button" variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setQuantity(quantity + 1)}>
+                      <Input
+                        type="number"
+                        min={activeGarmentIsPerMeter ? 0.1 : 1}
+                        step={activeGarmentIsPerMeter ? 0.1 : 1}
+                        value={quantity}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setQuantity(activeGarmentIsPerMeter ? Math.max(0.1, v) : Math.max(1, Math.floor(v)));
+                        }}
+                        className="w-20 text-center"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9 shrink-0"
+                        onClick={() => setQuantity(+(quantity + (activeGarmentIsPerMeter ? 0.5 : 1)).toFixed(2))}
+                      >
                         <span className="text-lg">+</span>
                       </Button>
+                      <span className="mr-1 text-sm text-muted-foreground whitespace-nowrap">
+                        {activeGarmentIsPerMeter ? "متر" : "عدد"}
+                      </span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      قیمت واحد: {formatToman(currentUnitPrice)} | جمع: {formatToman(currentUnitPrice * quantity)}
+                      قیمت {activeGarmentIsPerMeter ? "هر متر" : "واحد"}: {formatToman(currentUnitPrice)} | جمع: {formatToman(currentUnitPrice * quantity)}
                     </div>
                   </div>
 
@@ -820,13 +860,30 @@ export default function NewOrderPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        <Button type="button" variant="outline" size="icon" className="size-7" onClick={() => updateCartQty(idx, item.quantity - 1)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-7"
+                          onClick={() => updateCartQty(idx, +(item.quantity - (item.isPricedPerMeter ? 0.5 : 1)).toFixed(2))}
+                        >
                           <span className="text-sm">−</span>
                         </Button>
-                        <span className="w-7 text-center text-sm font-medium">{toPersianDigits(item.quantity)}</span>
-                        <Button type="button" variant="outline" size="icon" className="size-7" onClick={() => updateCartQty(idx, item.quantity + 1)}>
+                        <span className="w-10 text-center text-sm font-medium">
+                          {toPersianDigits(item.quantity)}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-7"
+                          onClick={() => updateCartQty(idx, +(item.quantity + (item.isPricedPerMeter ? 0.5 : 1)).toFixed(2))}
+                        >
                           <span className="text-sm">+</span>
                         </Button>
+                        <span className="mr-1 text-xs text-muted-foreground">
+                          {item.isPricedPerMeter ? "متر" : "عدد"}
+                        </span>
                       </div>
                       <span className="text-sm font-medium">{formatToman(item.unitPrice * item.quantity)}</span>
                     </div>

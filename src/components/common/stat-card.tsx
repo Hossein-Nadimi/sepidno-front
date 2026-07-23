@@ -13,11 +13,13 @@ interface StatCardProps {
     direction: "up" | "down" | "neutral";
   };
   className?: string;
+  /** When provided, the card becomes a clickable link. */
+  href?: string;
 }
 
-export function StatCard({ title, value, icon, description, trend, className }: StatCardProps) {
-  return (
-    <div className={cn("rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md", className)}>
+export function StatCard({ title, value, icon, description, trend, className, href }: StatCardProps) {
+  const inner = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -42,6 +44,26 @@ export function StatCard({ title, value, icon, description, trend, className }: 
           </span>
         </div>
       )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        className={cn(
+          "block rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/40 cursor-pointer",
+          className,
+        )}
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <div className={cn("rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md", className)}>
+      {inner}
     </div>
   );
 }

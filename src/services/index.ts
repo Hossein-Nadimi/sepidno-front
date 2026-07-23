@@ -387,12 +387,16 @@ export interface YearlyOverview {
   jalaliYear: string;
   totalRevenue: number;
   totalOrders: number;
+  totalExpenses: number;
+  totalProfit: number;
   newCustomers: number;
   averageOrderValue: number;
   months: Array<{
     month: number;
     name: string;
     revenue: number;
+    expenses: number;
+    profit: number;
     count: number;
     orders: number;
   }>;
@@ -449,14 +453,23 @@ export interface CombinedGarmentType {
   icon?: string;
   image?: string;
   isCustom: boolean;
+  /** Whether this garment is available for the business to use.
+   *  - For global garments: false if the business disabled it via settings.disabledGarmentTypes
+   *  - For custom garments: the garment's own `active` flag */
+  active: boolean;
+  /** When true, this garment is priced per meter (e.g. پرده). */
+  isPricedPerMeter?: boolean;
 }
 
 export const customGarmentService = {
   list(): Promise<CombinedGarmentType[]> {
     return api.get<SuccessResponse<CombinedGarmentType[]>>("/laundry/custom-garments").then((r) => r.data.data);
   },
-  create(payload: { title: string; description?: string; icon?: string; image?: string }): Promise<unknown> {
+  create(payload: { title: string; description?: string; icon?: string; image?: string; isPricedPerMeter?: boolean }): Promise<unknown> {
     return api.post<SuccessResponse<unknown>>("/laundry/custom-garments", payload).then((r) => r.data.data);
+  },
+  update(id: string, payload: { title?: string; description?: string; icon?: string; image?: string; active?: boolean; isPricedPerMeter?: boolean }): Promise<unknown> {
+    return api.patch<SuccessResponse<unknown>>(`/laundry/custom-garments/${id}`, payload).then((r) => r.data.data);
   },
   delete(id: string): Promise<void> {
     return api.delete(`/laundry/custom-garments/${id}`).then(() => undefined);
@@ -487,8 +500,8 @@ export const expenseService = {
   delete(id: string): Promise<void> {
     return api.delete(`/laundry/expenses/${id}`).then(() => undefined);
   },
-  stats(params?: Record<string, unknown>): Promise<{ total: number; count: number }> {
-    return api.get<SuccessResponse<{ total: number; count: number }>>(`/laundry/expenses/stats${buildQueryString(params ?? {})}`).then((r) => r.data.data);
+  stats(params?: Record<string, unknown>): Promise<{ total: number; count: number; daily?: Array<{ date: string; jalaliDate: string; total: number; count: number }> }> {
+    return api.get<SuccessResponse<{ total: number; count: number; daily?: Array<{ date: string; jalaliDate: string; total: number; count: number }> }>>(`/laundry/expenses/stats${buildQueryString(params ?? {})}`).then((r) => r.data.data);
   },
 };
 

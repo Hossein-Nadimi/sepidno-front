@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   CalendarDays,
   ChevronRight,
@@ -11,8 +10,6 @@ import {
   Zap,
   TrendingUp,
   AlertCircle,
-  X,
-  ShoppingCart,
 } from "lucide-react";
 import moment from "moment-jalaali";
 import { calendarService, type CalendarDayInfo } from "@/services";
@@ -22,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toPersianDigits, formatToman } from "@/lib/utils";
 import { jalaliStringToLongLabel, JALALI_WEEKDAYS, JALALI_MONTHS } from "@/lib/jalali";
 
@@ -49,40 +45,12 @@ export default function OrdersCalendarPage() {
   const router = useRouter();
   const currentMonth = useMemo(() => moment().format("jYYYY/jMM"), []);
   const [month, setMonth] = useState<string>(currentMonth);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  // Pagination for the day detail modal — show 10 orders per page
-  const ORDERS_PER_PAGE = 10;
-  const [dayPage, setDayPage] = useState(1);
 
   const { data, isLoading } = useQuery({
     queryKey: ["orders-calendar", month],
     queryFn: () => calendarService.getMonth(month),
     enabled: !!month,
   });
-
-  const { data: dayDetail, isLoading: dayLoading } = useQuery({
-    queryKey: ["orders-calendar-day", selectedDay],
-    queryFn: () => calendarService.getDay(selectedDay!),
-    enabled: !!selectedDay,
-  });
-
-  // Reset page when a new day is selected
-  const prevSelectedDayRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (selectedDay !== prevSelectedDayRef.current) {
-      setDayPage(1);
-      prevSelectedDayRef.current = selectedDay;
-    }
-  }, [selectedDay]);
-
-  // Compute paginated orders for the modal
-  const dayOrders = dayDetail?.orders ?? [];
-  const dayTotalPages = Math.max(1, Math.ceil(dayOrders.length / ORDERS_PER_PAGE));
-  const safeDayPage = Math.min(dayPage, dayTotalPages);
-  const paginatedDayOrders = dayOrders.slice(
-    (safeDayPage - 1) * ORDERS_PER_PAGE,
-    safeDayPage * ORDERS_PER_PAGE,
-  );
 
   // Build the calendar grid.
   // Backend returns 42 days (6 weeks starting from Saturday). We mark days
@@ -218,7 +186,7 @@ export default function OrdersCalendarPage() {
                 return (
                   <button
                     key={idx}
-                    onClick={() => setSelectedDay(day.jalaliDate)}
+                    onClick={() => router.push(`/orders?deliveryOn=${encodeURIComponent(day.jalaliDate)}`)}
                     className={[
                       "relative aspect-square min-h-14 rounded-md border p-1 text-right transition hover:scale-[1.02] hover:shadow-md sm:min-h-24 sm:p-2",
                       day.isToday
@@ -230,7 +198,6 @@ export default function OrdersCalendarPage() {
                         : day.orderCount > 0
                           ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
                           : "bg-card hover:bg-muted/50",
-                      selectedDay === day.jalaliDate ? "ring-2 ring-emerald-500" : "",
                     ].join(" ")}
                   >
                     <div className="flex h-full flex-col">
@@ -283,128 +250,12 @@ export default function OrdersCalendarPage() {
               امروز
             </div>
           </div>
+
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            برای مشاهده سفارشات هر روز، روی آن کلیک کنید
+          </p>
         </CardContent>
       </Card>
-
-      {/* Day detail — Modal */}
-      <Dialog open={!!selectedDay} onOpenChange={(o) => !o && setSelectedDay(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <CalendarDays className="size-5 text-primary" />
-              {selectedDay ? jalaliStringToLongLabel(selectedDay) : ""}
-            </DialogTitle>
-            {dayDetail && (
-              <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                <Badge variant="outline" className="text-sm">
-                  <ShoppingCart className="ml-1 size-3.5" />
-                  {toPersianDigits(dayDetail.orderCount)} سفارش
-                </Badge>
-                <Badge variant="outline" className="text-sm text-emerald-700 dark:text-emerald-400">
-                  {formatToman(dayDetail.totalRevenue)}
-                </Badge>
-                {dayDetail.urgentCount > 0 && (
-                  <Badge variant="outline" className="text-sm text-amber-700 dark:text-amber-400">
-                    <Zap className="ml-1 size-3.5" />
-                    {toPersianDigits(dayDetail.urgentCount)} فوری
-                  </Badge>
-                )}
-                {dayDetail.isFull && (
-                  <Badge variant="outline" className="text-sm text-red-700 dark:text-red-400">
-                    <AlertCircle className="ml-1 size-3.5" />
-                    ظرفیت تکمیل شده
-                  </Badge>
-                )}
-              </div>
-            )}
-          </DialogHeader>
-
-          <div className="py-2">
-            {dayLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 w-full rounded-md" />
-                ))}
-              </div>
-            ) : dayDetail && dayDetail.orders.length > 0 ? (
-              <>
-                <div className="space-y-2">
-                  {paginatedDayOrders.map((o) => (
-                    <div
-                      key={o._id}
-                      onClick={() => router.push(`/orders/${o._id}`)}
-                      className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 transition hover:bg-muted/50 sm:p-4"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-bold sm:text-base" dir="ltr">{o.orderNumber}</span>
-                            {o.urgent && (
-                              <span className="flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                                <Zap className="size-2.5" />
-                                فوری
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm font-medium sm:text-base">{o.customerName}</div>
-                          <div className="text-xs text-muted-foreground sm:text-sm" dir="ltr">{o.customerMobile}</div>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1 text-left">
-                        <Badge variant="outline" className="text-xs sm:text-sm">{o.statusTitle}</Badge>
-                        <div className="text-sm font-bold sm:text-base">{formatToman(o.finalPrice)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pagination */}
-                {dayTotalPages > 1 && (
-                  <div className="mt-4 flex flex-col items-center gap-2 border-t pt-3 sm:flex-row sm:justify-between">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={safeDayPage <= 1}
-                      onClick={() => setDayPage(safeDayPage - 1)}
-                      className="w-full sm:w-auto"
-                    >
-                      <ChevronRight className="size-4" />
-                      قبلی
-                    </Button>
-                    <span className="text-center text-xs text-muted-foreground sm:text-sm sm:order-none">
-                      صفحه {toPersianDigits(safeDayPage)} از {toPersianDigits(dayTotalPages)} —
-                      مجموع {toPersianDigits(dayOrders.length)} سفارش
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={safeDayPage >= dayTotalPages}
-                      onClick={() => setDayPage(safeDayPage + 1)}
-                      className="w-full sm:w-auto"
-                    >
-                      بعدی
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="rounded-lg border border-dashed py-10 text-center">
-                <p className="text-sm text-muted-foreground sm:text-base">
-                  سفارشی برای این روز ثبت نشده است.
-                </p>
-                <div className="mt-4">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/orders/new">ثبت سفارش جدید</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

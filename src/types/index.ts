@@ -71,6 +71,8 @@ export interface CatalogItem {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  /** GarmentType only — when true, this garment is priced per meter (e.g. پرده). */
+  isPricedPerMeter?: boolean;
 }
 
 export interface GarmentType extends CatalogItem {}
@@ -405,6 +407,8 @@ export interface BusinessSettings {
   enabledServices: BusinessEnabledService[];
   urgentMultiplier: number;
   maxDailyOrders?: number;
+  /** Array of global GarmentType IDs that this business has disabled. */
+  disabledGarmentTypes?: string[];
 }
 
 /* -------------------------------- Receipts -------------------------------- */

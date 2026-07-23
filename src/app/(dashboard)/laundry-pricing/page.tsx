@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tags, Save, Loader2, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { pricingService, catalogService, customGarmentService } from "@/services";
+import { pricingService, catalogService, customGarmentService, settingsService } from "@/services";
 import type { GarmentType, ServiceType, Pricing } from "@/types";
 import { PageHeader } from "@/components/common/page-header";
 import { PageHelp } from "@/components/common/page-help";
@@ -36,8 +36,9 @@ export default function PricingPage() {
   } | null>(null);
   const [activeTab, setActiveTab] = useState<string>("");
   const [showCustomDialog, setShowCustomDialog] = useState(false);
-  const [newCustomGarment, setNewCustomGarment] = useState({ title: "", description: "" });
+  const [newCustomGarment, setNewCustomGarment] = useState({ title: "", description: "", isPricedPerMeter: false });
   const [deleteCustomId, setDeleteCustomId] = useState<string | null>(null);
+  const [editCustomGarment, setEditCustomGarment] = useState<CombinedGarmentType | null>(null);
 
   // Only fetch active catalogs (inactive ones shouldn't be shown to laundry)
   const { data: garments } = useQuery({
@@ -57,23 +58,40 @@ export default function PricingPage() {
     queryFn: () => pricingService.list({ pageSize: 500 }),
   });
 
-  // Combined list: global + custom (custom marked with a star)
-  const garmentsList: (GarmentType & { isCustom?: boolean })[] = useMemo(() => {
-    const globals = (garments?.items || []).map((g: GarmentType) => ({ ...g, isCustom: false }));
+  // Combined list: global + custom.
+  // For globals, the `active` flag comes from CombinedGarmentType (set by
+  // settings.disabledGarmentTypes on the backend).
+  // For customs, the `active` flag is the garment's own flag.
+  // Inactive garments are sorted to the end of the list.
+  const garmentsList: (GarmentType & { isCustom?: boolean; active: boolean; isPricedPerMeter?: boolean })[] = useMemo(() => {
+    const globals = (garments?.items || []).map((g: GarmentType) => {
+      // Find matching entry in customGarments to get the `active` flag
+      const combined = (customGarments || []).find((c: CombinedGarmentType) => c._id === g._id);
+      return { ...g, isCustom: false, active: combined?.active ?? true, isPricedPerMeter: g.isPricedPerMeter ?? combined?.isPricedPerMeter ?? false };
+    });
     const customs = (customGarments || []).filter((g: CombinedGarmentType) => g.isCustom).map((g: CombinedGarmentType) => ({
       _id: g._id,
       title: g.title,
       slug: g.slug,
+      icon: g.icon,
+      image: g.image,
       isCustom: true,
-      active: true,
-    } as unknown as GarmentType & { isCustom: boolean }));
-    return [...globals, ...customs];
+      active: g.active,
+      isPricedPerMeter: g.isPricedPerMeter ?? false,
+    } as unknown as GarmentType & { isCustom: boolean; active: boolean; isPricedPerMeter: boolean }));
+    const all = [...globals, ...customs];
+    // Sort: active first, then inactive
+    return all.sort((a, b) => {
+      if (a.active === b.active) return 0;
+      return a.active ? -1 : 1;
+    });
   }, [garments, customGarments]);
   const servicesList = services?.items || [];
 
-  // Set default tab when data loads
+  // Set default tab when data loads — prefer the first active garment
   if (garmentsList.length > 0 && !activeTab) {
-    setActiveTab(garmentsList[0]._id);
+    const firstActive = garmentsList.find((g) => g.active);
+    setActiveTab(firstActive?._id || garmentsList[0]._id);
   }
 
   // Create custom garment type
@@ -81,14 +99,30 @@ export default function PricingPage() {
     mutationFn: () => customGarmentService.create({
       title: newCustomGarment.title,
       description: newCustomGarment.description || undefined,
+      isPricedPerMeter: newCustomGarment.isPricedPerMeter,
     }),
     onSuccess: () => {
       toast.success("نوع لباس اختصاصی ایجاد شد");
       queryClient.invalidateQueries({ queryKey: ["combined-garments"] });
       setShowCustomDialog(false);
-      setNewCustomGarment({ title: "", description: "" });
+      setNewCustomGarment({ title: "", description: "", isPricedPerMeter: false });
     },
     onError: () => toast.error("خطا در ایجاد نوع لباس"),
+  });
+
+  // Update custom garment type
+  const updateCustomMutation = useMutation({
+    mutationFn: (payload: { id: string; title?: string; isPricedPerMeter?: boolean }) =>
+      customGarmentService.update(payload.id, {
+        title: payload.title,
+        isPricedPerMeter: payload.isPricedPerMeter,
+      }),
+    onSuccess: () => {
+      toast.success("نوع لباس اختصاصی ویرایش شد");
+      queryClient.invalidateQueries({ queryKey: ["combined-garments"] });
+      setEditCustomGarment(null);
+    },
+    onError: () => toast.error("خطا در ویرایش نوع لباس"),
   });
 
   // Delete custom garment type
@@ -104,6 +138,35 @@ export default function PricingPage() {
         setActiveTab(garmentsList[1]._id);
       }
     },
+  });
+
+  // Toggle garment active state (enable/disable the whole garment type)
+  // - For custom garments: update the garment's `active` flag directly
+  // - For global garments: add/remove from settings.disabledGarmentTypes
+  const toggleGarmentMutation = useMutation({
+    mutationFn: async ({ garmentId, isCustom, active }: { garmentId: string; isCustom: boolean; active: boolean }) => {
+      if (isCustom) {
+        return customGarmentService.update(garmentId, { active });
+      }
+      // Global garment — update settings.disabledGarmentTypes
+      const settings = await settingsService.get();
+      const currentDisabled = (settings.disabledGarmentTypes || []) as string[];
+      let nextDisabled: string[];
+      if (active) {
+        // enabling → remove from disabled list
+        nextDisabled = currentDisabled.filter((id) => id !== garmentId);
+      } else {
+        // disabling → add to disabled list
+        nextDisabled = [...currentDisabled, garmentId];
+      }
+      return settingsService.update({ disabledGarmentTypes: nextDisabled });
+    },
+    onSuccess: () => {
+      toast.success("وضعیت نوع لباس تغییر کرد");
+      queryClient.invalidateQueries({ queryKey: ["combined-garments"] });
+      queryClient.invalidateQueries({ queryKey: ["business-settings"] });
+    },
+    onError: () => toast.error("خطا در تغییر وضعیت"),
   });
 
   const priceMap = useMemo(() => {
@@ -235,10 +298,23 @@ export default function PricingPage() {
                 <div key={g._id} className="flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm">
                   <CatalogIcon icon={g.icon} image={g.image} size={14} className="text-primary ml-1" />
                   <span className="font-medium">{g.title}</span>
+                  {g.isPricedPerMeter && (
+                    <span className="rounded-full bg-blue-100 px-1 py-0.5 text-[10px] text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
+                      بر متر
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground">★ اختصاصی</span>
                   <button
                     type="button"
-                    className="mr-1 text-muted-foreground hover:text-destructive"
+                    className="mr-1 text-muted-foreground hover:text-primary"
+                    onClick={() => setEditCustomGarment(g)}
+                    title="ویرایش"
+                  >
+                    <Edit2 className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-destructive"
                     onClick={() => setDeleteCustomId(g._id)}
                     title="حذف"
                   >
@@ -267,9 +343,10 @@ export default function PricingPage() {
         <>
           {/* Garment type selector — wraps naturally on all screen sizes */}
           <div className="flex flex-wrap gap-2">
-            {garmentsList.map((g: GarmentType & { isCustom?: boolean; icon?: string; image?: string }) => {
+            {garmentsList.map((g: GarmentType & { isCustom?: boolean; icon?: string; image?: string; active: boolean }) => {
               const pricedCount = servicesList.filter((s: ServiceType) => priceMap.has(`${g._id}-${s._id}`)).length;
               const isActive = activeTab === g._id;
+              const isGarmentActive = g.active;
               return (
                 <button
                   key={g._id}
@@ -280,6 +357,7 @@ export default function PricingPage() {
                     isActive
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card hover:bg-accent",
+                    !isGarmentActive && "opacity-50",
                   )}
                 >
                   <CatalogIcon
@@ -290,6 +368,11 @@ export default function PricingPage() {
                   />
                   <span className="whitespace-nowrap">{g.title}</span>
                   {g.isCustom && <span className="text-xs opacity-60" title="اختصاصی">★</span>}
+                  {!isGarmentActive && (
+                    <span className="rounded-full bg-muted px-1 py-0.5 text-[9px] text-muted-foreground" title="غیرفعال">
+                      غیرفعال
+                    </span>
+                  )}
                   <span className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs",
                     pricedCount === servicesList.length
@@ -313,14 +396,56 @@ export default function PricingPage() {
             return (
               <Card>
                 <CardContent className="p-0">
-                  <div className="border-b p-4">
-                    <h3 className="font-semibold">قیمت‌گذاری: {selectedGarment.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      برای هر خدمت، قیمت را تعیین کنید. می‌توانید خدمتی را با سوییچ فعال/غیرفعال کنید.
-                    </p>
+                  <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="flex items-center gap-2 font-semibold">
+                        قیمت‌گذاری: {selectedGarment.title}
+                        {selectedGarment.isCustom && <span className="text-xs opacity-60">★ اختصاصی</span>}
+                        {!selectedGarment.active && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">غیرفعال</span>
+                        )}
+                        {selectedGarment.isPricedPerMeter && (
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
+                            بر متر
+                          </span>
+                        )}
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {selectedGarment.isPricedPerMeter
+                          ? "قیمت‌ها به ازای هر متر محاسبه می‌شود. در ثبت سفارش، متراژ وارد می‌شود."
+                          : "برای هر خدمت، قیمت را تعیین کنید. می‌توانید خدمتی را با سوییچ فعال/غیرفعال کنید."}
+                      </p>
+                    </div>
+                    {/* Toggle whole garment active/inactive */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className={cn("text-xs", selectedGarment.active ? "text-emerald-600" : "text-muted-foreground")}>
+                        {selectedGarment.active ? "فعال" : "غیرفعال"}
+                      </span>
+                      <Switch
+                        checked={selectedGarment.active}
+                        onCheckedChange={(checked) =>
+                          toggleGarmentMutation.mutate({
+                            garmentId: selectedGarment._id,
+                            isCustom: !!selectedGarment.isCustom,
+                            active: checked,
+                          })
+                        }
+                      />
+                    </div>
                   </div>
+                  {/* Sort services: active first, inactive last */}
+                  {(() => {
+                    const sortedServices = [...servicesList].sort((a, b) => {
+                      const pa = priceMap.get(`${selectedGarment._id}-${a._id}`);
+                      const pb = priceMap.get(`${selectedGarment._id}-${b._id}`);
+                      const aActive = pa ? pa.active : true;
+                      const bActive = pb ? pb.active : true;
+                      if (aActive === bActive) return 0;
+                      return aActive ? -1 : 1;
+                    });
+                    return (
                   <div className="divide-y">
-                    {servicesList.map((s: ServiceType) => {
+                    {sortedServices.map((s: ServiceType) => {
                       const p = priceMap.get(`${selectedGarment._id}-${s._id}`);
                       const isPriced = !!p;
                       const isActive = p?.active ?? true;
@@ -361,6 +486,9 @@ export default function PricingPage() {
                             {isPriced ? (
                               <span className={cn("font-medium text-sm", !isActive && "text-muted-foreground")}>
                                 {formatToman(p.price)}
+                                {selectedGarment.isPricedPerMeter && (
+                                  <span className="text-xs text-muted-foreground"> / متر</span>
+                                )}
                               </span>
                             ) : (
                               <Button
@@ -438,6 +566,8 @@ export default function PricingPage() {
                       );
                     })}
                   </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             );
@@ -461,7 +591,12 @@ export default function PricingPage() {
                 <span className="font-medium">{editing.serviceTitle}</span>
               </div>
               <div className="space-y-2">
-                <Label>قیمت (تومان)</Label>
+                <Label>
+                  قیمت (تومان)
+                  {garmentsList.find((g) => g._id === editing.garment)?.isPricedPerMeter && (
+                    <span className="mr-1 text-xs text-blue-600">— بر متر</span>
+                  )}
+                </Label>
                 <Input
                   type="number"
                   min={0}
@@ -518,6 +653,16 @@ export default function PricingPage() {
                 onChange={(e) => setNewCustomGarment({ ...newCustomGarment, description: e.target.value })}
               />
             </div>
+            <div className="flex items-center gap-2 rounded-lg border p-3">
+              <Switch
+                checked={newCustomGarment.isPricedPerMeter}
+                onCheckedChange={(v) => setNewCustomGarment({ ...newCustomGarment, isPricedPerMeter: v })}
+                id="newPerMeter"
+              />
+              <Label htmlFor="newPerMeter" className="cursor-pointer">
+                قیمت‌گذاری بر متر (مثل پرده، فرش)
+              </Label>
+            </div>
             <p className="text-xs text-muted-foreground">
               این نوع لباس فقط برای کسب‌وکار شما نمایش داده می‌شود و در کاتالوگ عمومی سامانه قرار نمی‌گیرد.
             </p>
@@ -530,6 +675,53 @@ export default function PricingPage() {
             >
               {createCustomMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4 ml-1" />}
               افزودن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit custom garment dialog */}
+      <Dialog open={!!editCustomGarment} onOpenChange={(o) => !o && setEditCustomGarment(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ویرایش نوع لباس اختصاصی</DialogTitle>
+          </DialogHeader>
+          {editCustomGarment && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>عنوان</Label>
+                <Input
+                  value={editCustomGarment.title}
+                  onChange={(e) => setEditCustomGarment({ ...editCustomGarment, title: e.target.value })}
+                />
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border p-3">
+                <Switch
+                  checked={editCustomGarment.isPricedPerMeter ?? false}
+                  onCheckedChange={(v) => setEditCustomGarment({ ...editCustomGarment, isPricedPerMeter: v })}
+                  id="editPerMeter"
+                />
+                <Label htmlFor="editPerMeter" className="cursor-pointer">
+                  قیمت‌گذاری بر متر (مثل پرده، فرش)
+                </Label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditCustomGarment(null)}>انصراف</Button>
+            <Button
+              onClick={() => {
+                if (!editCustomGarment) return;
+                updateCustomMutation.mutate({
+                  id: editCustomGarment._id,
+                  title: editCustomGarment.title,
+                  isPricedPerMeter: editCustomGarment.isPricedPerMeter,
+                });
+              }}
+              disabled={!editCustomGarment?.title.trim() || updateCustomMutation.isPending}
+            >
+              {updateCustomMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4 ml-1" />}
+              ذخیره
             </Button>
           </DialogFooter>
         </DialogContent>

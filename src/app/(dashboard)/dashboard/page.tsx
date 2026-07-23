@@ -182,6 +182,7 @@ export default function DashboardPage() {
           value={formatNumber(data.delayed)}
           icon={<AlertTriangle className="size-5" />}
           className="border-amber-200 bg-amber-50 dark:bg-amber-950/20"
+          href="/orders?delayed=true"
         />
         <StatCard
           title="درآمد امروز"
