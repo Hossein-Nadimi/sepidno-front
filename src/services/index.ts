@@ -459,16 +459,18 @@ export interface CombinedGarmentType {
   active: boolean;
   /** When true, this garment is priced per meter (e.g. پرده). */
   isPricedPerMeter?: boolean;
+  /** Category for grouping. */
+  category?: string;
 }
 
 export const customGarmentService = {
   list(): Promise<CombinedGarmentType[]> {
     return api.get<SuccessResponse<CombinedGarmentType[]>>("/laundry/custom-garments").then((r) => r.data.data);
   },
-  create(payload: { title: string; description?: string; icon?: string; image?: string; isPricedPerMeter?: boolean }): Promise<unknown> {
+  create(payload: { title: string; description?: string; icon?: string; image?: string; isPricedPerMeter?: boolean; category?: string }): Promise<unknown> {
     return api.post<SuccessResponse<unknown>>("/laundry/custom-garments", payload).then((r) => r.data.data);
   },
-  update(id: string, payload: { title?: string; description?: string; icon?: string; image?: string; active?: boolean; isPricedPerMeter?: boolean }): Promise<unknown> {
+  update(id: string, payload: { title?: string; description?: string; icon?: string; image?: string; active?: boolean; isPricedPerMeter?: boolean; category?: string }): Promise<unknown> {
     return api.patch<SuccessResponse<unknown>>(`/laundry/custom-garments/${id}`, payload).then((r) => r.data.data);
   },
   delete(id: string): Promise<void> {

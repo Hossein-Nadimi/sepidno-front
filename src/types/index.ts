@@ -73,6 +73,8 @@ export interface CatalogItem {
   updatedAt: string;
   /** GarmentType only — when true, this garment is priced per meter (e.g. پرده). */
   isPricedPerMeter?: boolean;
+  /** GarmentType only — category for grouping (e.g. "پالتو و بارانی"). */
+  category?: string;
 }
 
 export interface GarmentType extends CatalogItem {}

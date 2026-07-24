@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableLoading } from "@/components/common/loading";
@@ -25,7 +26,7 @@ import { toJalaliDateTime } from "@/lib/jalali";
 import toast from "react-hot-toast";
 
 const CATALOGS = [
-  { key: "garment-types", label: "انواع لباس", hasIcon: true },
+  { key: "garment-types", label: "انواع لباس", hasIcon: true, hasCategory: true },
   { key: "service-types", label: "انواع خدمت", hasIcon: true },
   { key: "fabric-types", label: "انواع پارچه", hasIcon: true },
   { key: "colors", label: "رنگ‌ها", hasIcon: false },
@@ -41,6 +42,7 @@ interface EditState {
   description: string;
   icon: string;
   image: string;
+  category: string;
   displayOrder: number;
   active: boolean;
   extra: Record<string, string>;
@@ -97,6 +99,7 @@ export default function AdminCatalogsPage() {
       description: editing.description,
       icon: editing.icon,
       image: editing.image,
+      category: editing.category,
       displayOrder: editing.displayOrder,
       active: editing.active,
     };
@@ -153,7 +156,7 @@ export default function AdminCatalogsPage() {
         title="کاتالوگ‌های سراسری"
         description="مدیریت کاتالوگ‌های مشترک پلتفرم"
         actions={
-          <Button onClick={() => setEditing({ title: "", description: "", icon: "", image: "", displayOrder: 0, active: true, extra: {} })}>
+          <Button onClick={() => setEditing({ title: "", description: "", icon: "", image: "", category: "", displayOrder: 0, active: true, extra: {} })}>
             <Plus className="size-4 ml-1" />
             آیتم جدید
           </Button>
@@ -180,6 +183,7 @@ export default function AdminCatalogsPage() {
                 <TableRow>
                   {showIconFields && <TableHead className="w-12 text-center">آیکون</TableHead>}
                   <TableHead>عنوان</TableHead>
+                  {activeCatalog === "garment-types" && <TableHead>دسته‌بندی</TableHead>}
                   <TableHead>slug</TableHead>
                   <TableHead className="text-center">ترتیب</TableHead>
                   <TableHead>تاریخ ثبت</TableHead>
@@ -198,6 +202,15 @@ export default function AdminCatalogsPage() {
                       </TableCell>
                     )}
                     <TableCell label="عنوان" className="font-medium">{item.title}</TableCell>
+                    {activeCatalog === "garment-types" && (
+                      <TableCell label="دسته‌بندی">
+                        {(item as { category?: string }).category ? (
+                          <Badge variant="outline">{(item as { category?: string }).category}</Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell label="slug" dir="ltr" className="text-xs text-muted-foreground">{item.slug}</TableCell>
                     <TableCell label="ترتیب" className="text-center">{toPersianDigits(item.displayOrder)}</TableCell>
                     <TableCell label="تاریخ ثبت" className="text-sm text-muted-foreground">{toJalaliDateTime(item.createdAt)}</TableCell>
@@ -218,6 +231,7 @@ export default function AdminCatalogsPage() {
                               description: item.description || "",
                               icon: item.icon || "",
                               image: item.image || "",
+                              category: (item as { category?: string }).category || "",
                               displayOrder: item.displayOrder,
                               active: item.active,
                               extra: {},
@@ -321,6 +335,38 @@ export default function AdminCatalogsPage() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Category field — only for garment types */}
+              {activeCatalog === "garment-types" && (
+                <div className="space-y-2">
+                  <Label>دسته‌بندی</Label>
+                  <Select
+                    value={editing.category || "_none"}
+                    onValueChange={(v) => setEditing({ ...editing, category: v === "_none" ? "" : v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب دسته‌بندی..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">— بدون دسته‌بندی —</SelectItem>
+                      <SelectItem value="عمومی">عمومی</SelectItem>
+                      <SelectItem value="پالتو و بارانی">پالتو و بارانی</SelectItem>
+                      <SelectItem value="کاپشن و اورکت">کاپشن و اورکت</SelectItem>
+                      <SelectItem value="رسمی و کت">رسمی و کت</SelectItem>
+                      <SelectItem value="مجلسی">مجلسی</SelectItem>
+                      <SelectItem value="مانتو و زنانه">مانتو و زنانه</SelectItem>
+                      <SelectItem value="پتو و رختخواب">پتو و رختخواب</SelectItem>
+                      <SelectItem value="پرده و روفرشی">پرده و روفرشی</SelectItem>
+                      <SelectItem value="کودک">کودک</SelectItem>
+                      <SelectItem value="کیف و چمدان">کیف و چمدان</SelectItem>
+                      <SelectItem value="متفرقه">متفرقه</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    دسته‌بندی برای گروه‌بندی لباس‌ها در ثبت سفارش و قیمت‌گذاری استفاده می‌شود.
+                  </p>
+                </div>
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">

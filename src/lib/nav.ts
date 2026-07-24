@@ -13,6 +13,7 @@ import {
   BookOpen,
   ShieldCheck,
   CalendarDays,
+  Zap,
   Ticket as TicketIcon,
   type LucideIcon,
 } from "lucide-react";

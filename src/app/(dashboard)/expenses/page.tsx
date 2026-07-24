@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Edit2, Trash2, Loader2, Save, Wallet, TrendingDown, Calendar } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Save, Wallet, TrendingDown, Calendar, ChevronRight, ChevronLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import moment from "moment-jalaali";
 import { expenseService, type Expense } from "@/services";
@@ -50,15 +50,28 @@ export default function ExpensesPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editItem, setEditItem] = useState<{ id?: string; title: string; category: string; amount: number; description: string; date: string; dateJalali: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
+  // Month navigation: current Jalali month by default
+  const [monthOffset, setMonthOffset] = useState(0); // 0 = this month, -1 = prev, 1 = next
+
+  // Compute the Jalali month based on offset
+  const targetMonth = (() => {
+    const m = moment().add(monthOffset, "jMonth");
+    return m.format("jYYYY/jMM");
+  })();
+  const targetMonthLabel = (() => {
+    const m = moment().add(monthOffset, "jMonth");
+    const monthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+    return `${monthNames[m.jMonth()]} ${toPersianDigits(m.jYear())}`;
+  })();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["expenses", page],
-    queryFn: () => expenseService.list({ page, pageSize: 20, sort: "-date" }),
+    queryKey: ["expenses", page, targetMonth],
+    queryFn: () => expenseService.list({ page, pageSize: 20, sort: "-date", jalaliMonth: targetMonth }),
   });
 
   const { data: stats } = useQuery({
-    queryKey: ["expense-stats"],
-    queryFn: () => expenseService.stats({ preset: "thisMonth" }),
+    queryKey: ["expense-stats", targetMonth],
+    queryFn: () => expenseService.stats({ jalaliMonth: targetMonth }),
   });
 
   const createMutation = useMutation({
@@ -141,9 +154,27 @@ export default function ExpensesPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title="هزینه‌های این ماه" value={formatToman(stats?.total ?? 0)} icon={<TrendingDown className="size-5" />} description={`${toPersianDigits(stats?.count ?? 0)} مورد`} />
-        <StatCard title="میانگین هزینه" value={formatToman(stats?.count ? Math.round((stats.total ?? 0) / stats.count) : 0)} icon={<Wallet className="size-5" />} />
+        <StatCard title={`هزینه‌های ${targetMonthLabel}`} value={formatToman(stats?.total ?? 0)} icon={<TrendingDown className="size-5" />} description={`${toPersianDigits(stats?.count ?? 0)} مورد`} variant="red" />
+        <StatCard title="میانگین هزینه" value={formatToman(stats?.count ? Math.round((stats.total ?? 0) / stats.count) : 0)} icon={<Wallet className="size-5" />} variant="amber" />
       </div>
+
+      {/* Month navigation */}
+      <Card>
+        <CardContent className="flex items-center justify-between p-3">
+          <Button variant="outline" size="sm" onClick={() => { setMonthOffset(monthOffset - 1); setPage(1); }}>
+            <ChevronRight className="size-4" />
+            ماه قبل
+          </Button>
+          <div className="text-center">
+            <div className="text-sm font-bold sm:text-base">{targetMonthLabel}</div>
+            <div className="text-xs text-muted-foreground">{toPersianDigits(stats?.count ?? 0)} مورد — {formatToman(stats?.total ?? 0)}</div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { setMonthOffset(monthOffset + 1); setPage(1); }} disabled={monthOffset >= 0}>
+            ماه بعد
+            <ChevronLeft className="size-4" />
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0">

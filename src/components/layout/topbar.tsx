@@ -3,15 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Moon, Sun, LogOut, ChevronLeft, ExternalLink } from "lucide-react";
+import { Menu, Moon, Sun, LogOut, ChevronLeft, ExternalLink, Bell, AlertTriangle, PackageCheck } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
 import { authService } from "@/services/auth.service";
-import { settingsService } from "@/services";
+import { settingsService, dashboardService } from "@/services";
 import { toast } from "react-hot-toast";
 import { navItems, adminNavItems } from "@/lib/nav";
+
+// Simple Persian digit converter (avoids importing from utils which is heavy)
+function toPersianDigitsSimple(n: number): string {
+  return String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +69,19 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     queryKey: ["business-settings"],
     queryFn: () => settingsService.get().catch(() => null),
   });
+
+  // Fetch dashboard data for notifications (delayed + ready orders)
+  const isSuperAdmin = user?.role === "super_admin";
+  const { data: dashboardData } = useQuery({
+    queryKey: ["dashboard-notifications"],
+    queryFn: () => dashboardService.get(),
+    refetchInterval: 60_000, // refresh every 60s
+    enabled: !isSuperAdmin,
+  });
+
+  const delayedCount = (dashboardData as { delayed?: number })?.delayed ?? 0;
+  const readyCount = (dashboardData as { readyForDelivery?: number })?.readyForDelivery ?? 0;
+  const totalNotifications = delayedCount + readyCount;
 
   // Build breadcrumb
   const segments = pathname.split("/").filter(Boolean);
@@ -122,6 +140,60 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <span className="hidden sm:inline">وب‌سایت</span>
           </Link>
         </Button>
+
+        {/* Notifications bell */}
+        {!isSuperAdmin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative" title="اعلان‌ها">
+                <Bell className="size-5" />
+                {totalNotifications > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {totalNotifications > 9 ? "۹+" : toPersianDigitsSimple(totalNotifications)}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuLabel>اعلان‌ها</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {totalNotifications === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  اعلا‌نی وجود ندارد
+                </div>
+              ) : (
+                <>
+                  {delayedCount > 0 && (
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/orders?delayed=true")}>
+                      <div className="flex w-full items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                          <AlertTriangle className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">سفارشات تأخیر یافته</p>
+                          <p className="text-xs text-muted-foreground">{toPersianDigitsSimple(delayedCount)} سفارش</p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {readyCount > 0 && (
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/orders")}>
+                      <div className="flex w-full items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                          <PackageCheck className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">آماده تحویل</p>
+                          <p className="text-xs text-muted-foreground">{toPersianDigitsSimple(readyCount)} سفارش</p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* Theme toggle */}
         <Button

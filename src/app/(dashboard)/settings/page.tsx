@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { settingsService, loyaltyService } from "@/services";
 import { PageHeader } from "@/components/common/page-header";
 import { PageHelp } from "@/components/common/page-help";
+import { HelpTip } from "@/components/common/help-tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -269,6 +270,7 @@ export default function SettingsPage() {
               {/* Urgent multiplier */}
               <div className="space-y-2">
                 <Label>ضریب سفارش فوری</Label>
+                <HelpTip content="مبلغ سفارش فوری در این ضریب ضرب می‌شود. مثلاً ۲ یعنی مبلغ سفارش فوری دو برابر می‌شود." />
                 <Input
                   type="number"
                   min={1}
@@ -282,6 +284,7 @@ export default function SettingsPage() {
               {/* Daily order limits */}
               <div className="space-y-2">
                 <Label>حداکثر سفارش روزانه</Label>
+                <HelpTip content="۰ یعنی بدون محدودیت. وقتی عددی تنظیم شود، روزهایی که ظرفیتشان تکمیل شده در تقویم با رنگ قرمز نمایش داده می‌شوند. این محدودیت فقط هشدار است و ثبت سفارش را مسدود نمی‌کند." />
                 <Input
                   type="number"
                   min={0}
@@ -435,6 +438,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 rounded-lg border p-3">
                 <Switch checked={loyaltyForm.enabled} onCheckedChange={(v) => setLoyaltyForm({ ...loyaltyForm, enabled: v })} id="loyaltyEnabled" />
                 <Label htmlFor="loyaltyEnabled">فعال‌سازی سیستم وفاداری</Label>
+                <HelpTip content="وقتی فعال باشد، هنگام تغییر وضعیت سفارش به «آماده تحویل»، به مشتری اعتبار کش‌بک تعلق می‌گیرد و پیامک ارسال می‌شود." />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

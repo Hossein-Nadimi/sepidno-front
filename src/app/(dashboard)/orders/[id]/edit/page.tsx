@@ -110,9 +110,9 @@ export default function EditOrderPage() {
   // Price map
   const priceMap = new Map<string, number>();
   (pricingData?.items || []).forEach((p) => {
-    const g = typeof p.garmentType === "object" ? p.garmentType._id : p.garmentType;
-    const s = typeof p.serviceType === "object" ? p.serviceType._id : p.serviceType;
-    priceMap.set(`${g}-${s}`, p.price);
+    const g = typeof p.garmentType === "object" ? p.garmentType?._id : p.garmentType;
+    const s = typeof p.serviceType === "object" ? p.serviceType?._id : p.serviceType;
+    if (g && s) priceMap.set(`${g}-${s}`, p.price);
   });
 
   const urgentMultiplier = businessSettings?.urgentMultiplier ?? 2;

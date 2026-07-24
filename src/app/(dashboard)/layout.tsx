@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col lg:pr-0">
           <Topbar onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 p-4 lg:p-6">{children}</main>
+          <main className="flex-1 p-4 lg:p-6 animate-fade-in-up">{children}</main>
         </div>
       </div>
     </AuthGuard>

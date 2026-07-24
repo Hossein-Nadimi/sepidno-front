@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableLoading } from "@/components/common/loading";
 import { EmptyState } from "@/components/common/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -36,7 +37,7 @@ export default function PricingPage() {
   } | null>(null);
   const [activeTab, setActiveTab] = useState<string>("");
   const [showCustomDialog, setShowCustomDialog] = useState(false);
-  const [newCustomGarment, setNewCustomGarment] = useState({ title: "", description: "", isPricedPerMeter: false });
+  const [newCustomGarment, setNewCustomGarment] = useState({ title: "", description: "", isPricedPerMeter: false, category: "" });
   const [deleteCustomId, setDeleteCustomId] = useState<string | null>(null);
   const [editCustomGarment, setEditCustomGarment] = useState<CombinedGarmentType | null>(null);
 
@@ -63,11 +64,11 @@ export default function PricingPage() {
   // settings.disabledGarmentTypes on the backend).
   // For customs, the `active` flag is the garment's own flag.
   // Inactive garments are sorted to the end of the list.
-  const garmentsList: (GarmentType & { isCustom?: boolean; active: boolean; isPricedPerMeter?: boolean })[] = useMemo(() => {
+  const garmentsList: (GarmentType & { isCustom?: boolean; active: boolean; isPricedPerMeter?: boolean; category?: string })[] = useMemo(() => {
     const globals = (garments?.items || []).map((g: GarmentType) => {
       // Find matching entry in customGarments to get the `active` flag
       const combined = (customGarments || []).find((c: CombinedGarmentType) => c._id === g._id);
-      return { ...g, isCustom: false, active: combined?.active ?? true, isPricedPerMeter: g.isPricedPerMeter ?? combined?.isPricedPerMeter ?? false };
+      return { ...g, isCustom: false, active: combined?.active ?? true, isPricedPerMeter: g.isPricedPerMeter ?? combined?.isPricedPerMeter ?? false, category: g.category ?? combined?.category ?? "" };
     });
     const customs = (customGarments || []).filter((g: CombinedGarmentType) => g.isCustom).map((g: CombinedGarmentType) => ({
       _id: g._id,
@@ -78,7 +79,8 @@ export default function PricingPage() {
       isCustom: true,
       active: g.active,
       isPricedPerMeter: g.isPricedPerMeter ?? false,
-    } as unknown as GarmentType & { isCustom: boolean; active: boolean; isPricedPerMeter: boolean }));
+      category: g.category ?? "",
+    } as unknown as GarmentType & { isCustom: boolean; active: boolean; isPricedPerMeter: boolean; category: string }));
     const all = [...globals, ...customs];
     // Sort: active first, then inactive
     return all.sort((a, b) => {
@@ -88,10 +90,27 @@ export default function PricingPage() {
   }, [garments, customGarments]);
   const servicesList = services?.items || [];
 
-  // Set default tab when data loads — prefer the first active garment
-  if (garmentsList.length > 0 && !activeTab) {
-    const firstActive = garmentsList.find((g) => g.active);
-    setActiveTab(firstActive?._id || garmentsList[0]._id);
+  // Group garments by category for the category-tabs UI (sorted alphabetically)
+  const categories = useMemo(() => {
+    const map = new Map<string, typeof garmentsList>();
+    for (const g of garmentsList) {
+      const cat = g.category || "سایر";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(g);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "fa"));
+  }, [garmentsList]);
+
+  const [activeCategory, setActiveCategory] = useState<string>("");
+
+  // Set default category + tab when data loads
+  if (categories.length > 0 && !activeCategory) {
+    setActiveCategory(categories[0][0]);
+  }
+  if (activeCategory && !activeTab) {
+    const catGarments = categories.find(([c]) => c === activeCategory)?.[1];
+    const firstActive = catGarments?.find((g) => g.active);
+    if (firstActive) setActiveTab(firstActive._id);
   }
 
   // Create custom garment type
@@ -100,22 +119,24 @@ export default function PricingPage() {
       title: newCustomGarment.title,
       description: newCustomGarment.description || undefined,
       isPricedPerMeter: newCustomGarment.isPricedPerMeter,
+      category: newCustomGarment.category || undefined,
     }),
     onSuccess: () => {
       toast.success("نوع لباس اختصاصی ایجاد شد");
       queryClient.invalidateQueries({ queryKey: ["combined-garments"] });
       setShowCustomDialog(false);
-      setNewCustomGarment({ title: "", description: "", isPricedPerMeter: false });
+      setNewCustomGarment({ title: "", description: "", isPricedPerMeter: false, category: "" });
     },
     onError: () => toast.error("خطا در ایجاد نوع لباس"),
   });
 
   // Update custom garment type
   const updateCustomMutation = useMutation({
-    mutationFn: (payload: { id: string; title?: string; isPricedPerMeter?: boolean }) =>
+    mutationFn: (payload: { id: string; title?: string; isPricedPerMeter?: boolean; category?: string }) =>
       customGarmentService.update(payload.id, {
         title: payload.title,
         isPricedPerMeter: payload.isPricedPerMeter,
+        category: payload.category,
       }),
     onSuccess: () => {
       toast.success("نوع لباس اختصاصی ویرایش شد");
@@ -172,9 +193,9 @@ export default function PricingPage() {
   const priceMap = useMemo(() => {
     const map = new Map<string, Pricing>();
     (pricingData?.items || []).forEach((p) => {
-      const g = typeof p.garmentType === "object" ? p.garmentType._id : p.garmentType;
-      const s = typeof p.serviceType === "object" ? p.serviceType._id : p.serviceType;
-      map.set(`${g}-${s}`, p);
+      const g = typeof p.garmentType === "object" ? p.garmentType?._id : p.garmentType;
+      const s = typeof p.serviceType === "object" ? p.serviceType?._id : p.serviceType;
+      if (g && s) map.set(`${g}-${s}`, p);
     });
     return map;
   }, [pricingData]);
@@ -341,9 +362,41 @@ export default function PricingPage() {
         </Card>
       ) : (
         <>
-          {/* Garment type selector — wraps naturally on all screen sizes */}
-          <div className="flex flex-wrap gap-2">
-            {garmentsList.map((g: GarmentType & { isCustom?: boolean; icon?: string; image?: string; active: boolean }) => {
+          {/* Category tabs */}
+          {categories.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {categories.map(([cat, items]) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    setActiveCategory(cat);
+                    const firstActive = items.find((g) => g.active);
+                    setActiveTab(firstActive?._id || items[0]?._id || "");
+                  }}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors sm:text-sm",
+                    activeCategory === cat
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:bg-accent",
+                  )}
+                >
+                  {cat} <span className="opacity-60">({toPersianDigits(items.length)})</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Garment type selector — only show garments in the active category */}
+          <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+                {activeCategory || "همه"}
+              </span>
+              <span className="text-xs text-muted-foreground">— انتخاب نوع لباس</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(categories.find(([c]) => c === activeCategory)?.[1] || garmentsList).map((g: GarmentType & { isCustom?: boolean; icon?: string; image?: string; active: boolean; isPricedPerMeter?: boolean }) => {
               const pricedCount = servicesList.filter((s: ServiceType) => priceMap.has(`${g._id}-${s._id}`)).length;
               const isActive = activeTab === g._id;
               const isGarmentActive = g.active;
@@ -387,6 +440,7 @@ export default function PricingPage() {
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* Service prices for selected garment */}
@@ -663,6 +717,30 @@ export default function PricingPage() {
                 قیمت‌گذاری بر متر (مثل پرده، فرش)
               </Label>
             </div>
+            <div className="space-y-2">
+              <Label>دسته‌بندی</Label>
+              <Select
+                value={newCustomGarment.category || "_none"}
+                onValueChange={(v) => setNewCustomGarment({ ...newCustomGarment, category: v === "_none" ? "" : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب دسته‌بندی..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="عمومی">عمومی</SelectItem>
+                  <SelectItem value="پالتو و بارانی">پالتو و بارانی</SelectItem>
+                  <SelectItem value="کاپشن و اورکت">کاپشن و اورکت</SelectItem>
+                  <SelectItem value="رسمی و کت">رسمی و کت</SelectItem>
+                  <SelectItem value="مجلسی">مجلسی</SelectItem>
+                  <SelectItem value="مانتو و زنانه">مانتو و زنانه</SelectItem>
+                  <SelectItem value="پتو و رختخواب">پتو و رختخواب</SelectItem>
+                  <SelectItem value="پرده و روفرشی">پرده و روفرشی</SelectItem>
+                  <SelectItem value="کودک">کودک</SelectItem>
+                  <SelectItem value="کیف و چمدان">کیف و چمدان</SelectItem>
+                  <SelectItem value="متفرقه">متفرقه</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <p className="text-xs text-muted-foreground">
               این نوع لباس فقط برای کسب‌وکار شما نمایش داده می‌شود و در کاتالوگ عمومی سامانه قرار نمی‌گیرد.
             </p>
@@ -705,6 +783,30 @@ export default function PricingPage() {
                   قیمت‌گذاری بر متر (مثل پرده، فرش)
                 </Label>
               </div>
+              <div className="space-y-2">
+                <Label>دسته‌بندی</Label>
+                <Select
+                  value={editCustomGarment.category || "_none"}
+                  onValueChange={(v) => setEditCustomGarment({ ...editCustomGarment, category: v === "_none" ? "" : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب دسته‌بندی..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="عمومی">عمومی</SelectItem>
+                    <SelectItem value="پالتو و بارانی">پالتو و بارانی</SelectItem>
+                    <SelectItem value="کاپشن و اورکت">کاپشن و اورکت</SelectItem>
+                    <SelectItem value="رسمی و کت">رسمی و کت</SelectItem>
+                    <SelectItem value="مجلسی">مجلسی</SelectItem>
+                    <SelectItem value="مانتو و زنانه">مانتو و زنانه</SelectItem>
+                    <SelectItem value="پتو و رختخواب">پتو و رختخواب</SelectItem>
+                    <SelectItem value="پرده و روفرشی">پرده و روفرشی</SelectItem>
+                    <SelectItem value="کودک">کودک</SelectItem>
+                    <SelectItem value="کیف و چمدان">کیف و چمدان</SelectItem>
+                    <SelectItem value="متفرقه">متفرقه</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -716,6 +818,7 @@ export default function PricingPage() {
                   id: editCustomGarment._id,
                   title: editCustomGarment.title,
                   isPricedPerMeter: editCustomGarment.isPricedPerMeter,
+                  category: editCustomGarment.category,
                 });
               }}
               disabled={!editCustomGarment?.title.trim() || updateCustomMutation.isPending}

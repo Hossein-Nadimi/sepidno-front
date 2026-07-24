@@ -15,6 +15,11 @@ import {
   Package,
   AlertCircle,
   Loader2,
+  CheckCircle2,
+  PackageCheck,
+  ShoppingCart,
+  XCircle,
+  User,
 } from "lucide-react";
 import { orderService, receiptService, catalogService, settingsService } from "@/services";
 import api from "@/lib/api";
@@ -29,10 +34,11 @@ import { TableLoading } from "@/components/common/loading";
 import { EmptyState } from "@/components/common/empty-state";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { CatalogIcon } from "@/components/common/catalog-icon";
+import { Avatar } from "@/components/common/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatToman, toPersianDigits, resolveMediaUrl } from "@/lib/utils";
+import { formatToman, toPersianDigits, resolveMediaUrl, cn } from "@/lib/utils";
 import { toJalali, toJalaliDateTime } from "@/lib/jalali";
 import toast from "react-hot-toast";
 
@@ -114,12 +120,15 @@ export default function OrderDetailPage() {
         .map((s) => (typeof s === "object" ? (s as { title?: string }).title : ""))
         .filter(Boolean)
         .join("، ");
+      const isPerMeter = (garment as { isPricedPerMeter?: boolean } | null)?.isPricedPerMeter;
       return `
         <tr>
-          <td style="padding: 6px 8px; border-bottom: 1px dashed #ddd; text-align: right;">${i + 1}. ${garment?.title || "—"}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px dashed #ddd; text-align: center;">${services || "—"}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px dashed #ddd; text-align: center;">${item.quantity}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px dashed #ddd; text-align: left; font-weight: bold;">${Number(item.lineTotal || 0).toLocaleString("en-US")}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px dashed #e5e7eb; text-align: right; padding-right: 20px;">
+            ${i + 1}. <strong>${garment?.title || "—"}</strong>
+            <br/><span style="font-size: 9px; color: #6b7280;">${services || "—"}</span>
+          </td>
+          <td style="padding: 6px 8px; border-bottom: 1px dashed #e5e7eb; text-align: center;">${item.quantity}${isPerMeter ? " متر" : ""}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px dashed #e5e7eb; text-align: left; font-weight: bold; padding-left: 20px;">${Number(item.lineTotal || 0).toLocaleString("en-US")}</td>
         </tr>
       `;
     }).join("");
@@ -138,69 +147,101 @@ export default function OrderDetailPage() {
           * { font-family: Tahoma, 'Segoe UI', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
           body { padding: 20px; background: #f8f9fa; }
           .receipt {
-            max-width: 380px; margin: 0 auto; background: white;
-            border-radius: 16px; overflow: hidden;
+            max-width: 400px; margin: 0 auto; background: white;
+            border-radius: 12px; overflow: hidden;
             box-shadow: 0 4px 24px rgba(0,0,0,0.1);
             border: 2px solid #e5e7eb;
           }
-          /* Header: logo + laundry name */
+          /* Header */
           .header {
-            background: linear-gradient(135deg, #0D9488, #14b8a6);
-            padding: 18px 20px; text-align: center; color: white;
+            background: linear-gradient(135deg, #0D9488, #0F766E);
+            padding: 20px; color: white;
+            display: flex; align-items: center; gap: 14px;
           }
-          .logo-area { display: flex; justify-content: center; margin-bottom: 10px; }
-          .header h1 { font-size: 18px; margin-bottom: 2px; font-weight: 700; }
-          .header p { font-size: 11px; opacity: 0.9; }
+          .header-logo { flex-shrink: 0; }
+          .header-info { flex: 1; }
+          .header-info h1 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+          .header-info p { font-size: 10px; opacity: 0.85; line-height: 1.5; }
+          .receipt-badge {
+            background: rgba(255,255,255,0.2); border-radius: 6px;
+            padding: 4px 8px; font-size: 10px; font-weight: 600;
+            display: inline-block; margin-top: 4px;
+          }
           /* Sections */
-          .section { padding: 14px 20px; border-bottom: 1px dashed #e5e7eb; }
+          .section { padding: 12px 20px; border-bottom: 1px dashed #d1d5db; }
           .section-title {
-            font-size: 11px; font-weight: 700; color: #0D9488; margin-bottom: 8px;
+            font-size: 10px; font-weight: 700; color: #0D9488; margin-bottom: 8px;
             text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 6px;
           }
-          .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+          .section-title::before {
+            content: ""; width: 3px; height: 12px; background: #0D9488; border-radius: 2px;
+          }
+          .info-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
           .info-row .label { color: #6b7280; }
           .info-row .value { font-weight: 600; }
+          /* Items table */
           .items-table { width: 100%; border-collapse: collapse; }
           .items-table th {
-            background: #f3f4f6; padding: 8px; font-size: 11px; font-weight: 700;
-            color: #374151; border-bottom: 2px solid #e5e7eb;
+            background: #F0FDFA; padding: 6px 8px; font-size: 10px; font-weight: 700;
+            color: #0F766E; border-bottom: 2px solid #0D9488;
           }
           .items-table td { font-size: 11px; color: #1f2937; }
-          .total-section { padding: 14px 20px; background: #f9fafb; }
-          .total-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+          /* Totals */
+          .total-section { padding: 12px 20px; background: #F0FDFA; }
+          .total-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
           .total-row.final {
-            border-top: 2px solid #0D9488; padding-top: 10px; margin-top: 6px;
+            border-top: 2px solid #0D9488; padding-top: 8px; margin-top: 6px;
             font-size: 14px; font-weight: bold; color: #0D9488;
           }
-          /* Footer = business info */
-          .footer {
-            padding: 14px 20px; background: #f0fdfa; border-top: 2px solid #0D9488;
-            font-size: 10px; color: #134e4a;
+          /* Divider */
+          .divider {
+            border: none; border-top: 2px dashed #d1d5db; margin: 0 20px;
           }
-          .footer h3 { font-size: 12px; margin-bottom: 6px; color: #0D9488; font-weight: 700; }
-          .footer-row { margin-bottom: 3px; }
+          /* Footer */
+          .footer { padding: 14px 20px; }
           .policies-box {
-            margin-top: 8px; padding: 8px; background: white; border-radius: 6px;
-            border: 1px dashed #0D9488; font-size: 9px; color: #4b5563;
+            padding: 8px 10px; background: #F9FAFB; border-radius: 6px;
+            border: 1px dashed #9CA3AF; font-size: 9px; color: #4b5563;
+            line-height: 1.6; margin-bottom: 12px;
+          }
+          .signature-row {
+            display: flex; justify-content: space-between; margin-top: 20px;
+            font-size: 10px; color: #6b7280;
+          }
+          .signature-box {
+            text-align: center; width: 120px;
+          }
+          .signature-line {
+            border-top: 1px solid #9CA3AF; margin-top: 30px; padding-top: 4px;
+          }
+          .footer-info {
+            margin-top: 16px; padding-top: 10px; border-top: 1px solid #e5e7eb;
+            font-size: 9px; color: #9CA3AF; text-align: center; line-height: 1.5;
           }
           @media print {
             body { padding: 0; background: white; }
-            .receipt { box-shadow: none; border: none; max-width: 100%; }
+            .receipt { box-shadow: none; border: none; max-width: 100%; border-radius: 0; }
+            .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
         </style>
       </head>
       <body>
         <div class="receipt">
-          <!-- HEADER: logo + laundry name -->
+          <!-- HEADER: logo + laundry name + contact -->
           <div class="header">
-            <div class="logo-area">${logoHtml}</div>
-            <h1>${laundryName}</h1>
-            <p>قبض سفارش خشکشویی</p>
+            <div class="header-logo">${logoHtml}</div>
+            <div class="header-info">
+              <h1>${laundryName}</h1>
+              ${businessSettings?.phone || businessSettings?.mobile ? `<p>📞 ${businessSettings?.phone || ""} ${businessSettings?.mobile ? " | " + businessSettings.mobile : ""}</p>` : ""}
+              ${businessSettings?.address ? `<p>📍 ${businessSettings.address}</p>` : ""}
+              <span class="receipt-badge">قبض سفارش ${order?.orderNumber || ""}</span>
+            </div>
           </div>
 
           <!-- CUSTOMER INFO -->
           <div class="section">
-            <div class="section-title">اطلاعات مشتری</div>
+            <div class="section-title">اطلاعات سفارش</div>
             <div class="info-row">
               <span class="label">شماره قبض:</span>
               <span class="value">${order?.orderNumber || "—"}</span>
@@ -223,6 +264,7 @@ export default function OrderDetailPage() {
               <span class="value" dir="ltr">${customer.mobile}</span>
             </div>
             ` : ""}
+            ${order?.urgent ? `<div class="info-row"><span class="label">نوع:</span><span class="value" style="color: #d97706;">⚡ فوری</span></div>` : ""}
           </div>
 
           <!-- ORDER ITEMS -->
@@ -232,10 +274,9 @@ export default function OrderDetailPage() {
           <table class="items-table">
             <thead>
               <tr>
-                <th style="text-align: right;">لباس / خدمت</th>
-                <th style="text-align: center;">خدمات</th>
+                <th style="text-align: right; padding-right: 20px;">لباس / خدمت</th>
                 <th style="text-align: center;">تعداد</th>
-                <th style="text-align: left;">مبلغ</th>
+                <th style="text-align: left; padding-left: 20px;">مبلغ</th>
               </tr>
             </thead>
             <tbody>
@@ -257,7 +298,7 @@ export default function OrderDetailPage() {
             ` : ""}
             ${order?.urgent ? `
             <div class="total-row" style="color: #d97706;">
-              <span>سفارش فوری:</span>
+              <span>ضریب فوری:</span>
               <span>✓ اعمال شد</span>
             </div>
             ` : ""}
@@ -273,14 +314,31 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          <!-- FOOTER: BUSINESS INFO -->
+          <hr class="divider" />
+
+          <!-- FOOTER: policies + signature -->
           <div class="footer">
-            <h3>اطلاعات خشکشویی</h3>
-            <div class="footer-row"><strong>نام:</strong> ${laundryName}</div>
-            ${businessSettings?.phone ? `<div class="footer-row"><strong>تلفن:</strong> <span dir="ltr">${businessSettings.phone}</span></div>` : ""}
-            ${businessSettings?.mobile ? `<div class="footer-row"><strong>موبایل:</strong> <span dir="ltr">${businessSettings.mobile}</span></div>` : ""}
-            ${businessSettings?.address ? `<div class="footer-row"><strong>آدرس:</strong> ${businessSettings.address}</div>` : ""}
-            ${businessSettings?.policies ? `<div class="policies-box"><strong>قوانین:</strong><br/>${businessSettings.policies}</div>` : ""}
+            ${businessSettings?.policies ? `
+            <div class="policies-box">
+              <strong style="color: #0F766E;">📌 قوانین و مقررات:</strong><br/>
+              ${businessSettings.policies}
+            </div>
+            ` : ""}
+
+            <div class="signature-row">
+              <div class="signature-box">
+                <div class="signature-line">امضای تحویل‌گیرنده</div>
+              </div>
+              <div class="signature-box">
+                <div class="signature-line">مهر و امضای خشکشویی</div>
+              </div>
+            </div>
+
+            <div class="footer-info">
+              ${laundryName}${businessSettings?.phone ? " | تلفن: " + businessSettings.phone : ""}${businessSettings?.mobile ? " | موبایل: " + businessSettings.mobile : ""}
+              <br/>
+              این قبض توسط سامانه سپیدنو صادر شده است.
+            </div>
           </div>
         </div>
       </body>
@@ -310,12 +368,13 @@ export default function OrderDetailPage() {
         .filter(Boolean)
         .join("، ");
       const unitPrice = item.unitPrice || 0;
+      const isPerMeter = (garment as { isPricedPerMeter?: boolean } | null)?.isPricedPerMeter;
       return `
         <tr>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${i + 1}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${garment?.title || "—"}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${services || "—"}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.quantity}${isPerMeter ? " متر" : ""}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: left;">${unitPrice.toLocaleString("en-US")}</td>
           <td style="padding: 8px; border: 1px solid #ddd; text-align: left; font-weight: bold;">${(unitPrice * item.quantity).toLocaleString("en-US")}</td>
         </tr>
@@ -539,6 +598,67 @@ export default function OrderDetailPage() {
         }
       />
 
+      {/* Order status timeline */}
+      {statusObj && (
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between overflow-x-auto">
+              {(() => {
+                const steps = [
+                  { key: "accepted", title: "پذیرش", icon: CheckCircle2, done: true },
+                  { key: "ready", title: "آماده تحویل", icon: PackageCheck, done: statusObj.title === "آماده تحویل" || statusObj.slug === "ready" || statusObj.isCompleted },
+                  { key: "completed", title: "تحویل شده", icon: ShoppingCart, done: statusObj.isCompleted },
+                ];
+                const cancelled = statusObj.isCancelled;
+                if (cancelled) {
+                  return (
+                    <div className="flex w-full items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/20">
+                      <XCircle className="size-6 text-red-500" />
+                      <div>
+                        <p className="font-medium text-red-700 dark:text-red-400">سفارش لغو شده</p>
+                        <p className="text-sm text-muted-foreground">این سفارش لغو شده است</p>
+                      </div>
+                    </div>
+                  );
+                }
+                return steps.map((step, i) => {
+                  const Icon = step.icon;
+                  const isLast = i === steps.length - 1;
+                  return (
+                    <div key={step.key} className="flex flex-1 items-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <div
+                          className={cn(
+                            "flex size-10 items-center justify-center rounded-full border-2 transition-all sm:size-12",
+                            step.done
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-muted bg-card text-muted-foreground",
+                          )}
+                        >
+                          <Icon className="size-5 sm:size-6" />
+                        </div>
+                        <span className={cn(
+                          "text-xs font-medium sm:text-sm",
+                          step.done ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                        )}>
+                          {step.title}
+                        </span>
+                      </div>
+                      {!isLast && (
+                        <div className={cn(
+                          "mx-2 h-0.5 flex-1 transition-all sm:mx-4",
+                          steps[i + 1].done ? "bg-emerald-500" : "bg-muted"
+                        )} />
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Items */}
         <Card className="lg:col-span-2">
@@ -566,7 +686,7 @@ export default function OrderDetailPage() {
                         <h3 className="font-semibold">{garment?.title || "—"}</h3>
                         <p className="mt-1 text-sm text-muted-foreground">خدمات: {services || "—"}</p>
                         <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                          <Badge variant="outline">تعداد: {toPersianDigits(item.quantity)}</Badge>
+                          <Badge variant="outline">{(garment as { isPricedPerMeter?: boolean } | null)?.isPricedPerMeter ? "متراژ" : "تعداد"}: {toPersianDigits(item.quantity)}{(garment as { isPricedPerMeter?: boolean } | null)?.isPricedPerMeter ? " متر" : ""}</Badge>
                           {color && <Badge variant="outline">رنگ: {color.title}</Badge>}
                           {fabric && <Badge variant="outline">پارچه: {fabric.title}</Badge>}
                           {item.brand && <Badge variant="outline">برند: {item.brand}</Badge>}
@@ -649,17 +769,22 @@ export default function OrderDetailPage() {
 
           {/* Customer */}
           {customer && (
-            <Card>
-              <CardHeader>
-                <CardTitle>اطلاعات مشتری</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p className="font-medium">{customer.firstName} {customer.lastName}</p>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="size-4" />
-                  <span dir="ltr">{customer.mobile}</span>
+            <Card className="overflow-hidden">
+              <div className="bg-gradient-to-l from-primary/10 to-transparent p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar name={`${customer.firstName} ${customer.lastName}`} size={48} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-base truncate">{customer.firstName} {customer.lastName}</p>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Phone className="size-3.5" />
+                      <span dir="ltr">{customer.mobile}</span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+              <CardContent className="p-4">
                 <Button variant="outline" size="sm" className="w-full" onClick={() => router.push(`/customers/${customer._id}`)}>
+                  <User className="size-4 ml-1" />
                   مشاهده پروفایل مشتری
                 </Button>
               </CardContent>

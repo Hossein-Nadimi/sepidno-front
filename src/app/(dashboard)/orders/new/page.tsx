@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -24,6 +24,8 @@ import { PageHelp } from "@/components/common/page-help";
 import { JalaliDatePicker } from "@/components/common/jalali-date-picker";
 import { PriceInput } from "@/components/common/price-input";
 import { CatalogIcon } from "@/components/common/catalog-icon";
+import { SearchInput } from "@/components/common/search-input";
+import { HelpTip } from "@/components/common/help-tip";
 import { useDebounced } from "@/hooks/use-debounced";
 import { formatToman, toPersianDigits, cn } from "@/lib/utils";
 import moment from "moment-jalaali";
@@ -62,6 +64,8 @@ export default function NewOrderPage() {
 
   // State
   const [activeGarment, setActiveGarment] = useState<string>("");
+  const [garmentSearch, setGarmentSearch] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -128,12 +132,29 @@ export default function NewOrderPage() {
     enabled: debouncedSearch.length >= 3,
   });
 
+  // Auto-select customer if search matches a phone number exactly
+  useEffect(() => {
+    if (!customerResults?.items?.length || selectedCustomer) return;
+    const phone = debouncedSearch.replace(/\s/g, "");
+    // Check if the search looks like a phone number (starts with 0 or +98)
+    if (/^0?9\d{9}$|^\+?989\d{9}$/.test(phone)) {
+      const match = customerResults.items.find(
+        (c) => c.mobile.replace(/\s/g, "") === phone || c.mobile.replace(/\s/g, "") === phone.replace(/^98/, "0"),
+      );
+      if (match) {
+        setSelectedCustomer(match);
+        setCustomerSearch(`${match.firstName} ${match.lastName} - ${match.mobile}`);
+        setShowCustomerSearch(false);
+      }
+    }
+  }, [customerResults, debouncedSearch, selectedCustomer]);
+
   // Price map
   const priceMap = new Map<string, number>();
   (pricingData?.items || []).forEach((p) => {
-    const g = typeof p.garmentType === "object" ? p.garmentType._id : p.garmentType;
-    const s = typeof p.serviceType === "object" ? p.serviceType._id : p.serviceType;
-    priceMap.set(`${g}-${s}`, p.price);
+    const g = typeof p.garmentType === "object" ? p.garmentType?._id : p.garmentType;
+    const s = typeof p.serviceType === "object" ? p.serviceType?._id : p.serviceType;
+    if (g && s) priceMap.set(`${g}-${s}`, p.price);
   });
 
   const urgentMultiplier = businessSettings?.urgentMultiplier ?? 2;
@@ -491,6 +512,7 @@ export default function NewOrderPage() {
                         <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                           موجودی: {formatToman(customerCashback)}
                         </span>
+                        <HelpTip content="اعتبار کش‌بک مشتری که از سفارش‌های قبلی جمع شده. با فعال کردن سوییچ، از مبلغ نهایی کسر می‌شود." />
                       </div>
                       <Switch checked={useCashback} onCheckedChange={setUseCashback} />
                     </div>
@@ -621,47 +643,120 @@ export default function NewOrderPage() {
             </CardContent>
           </Card>
 
-          {/* Garment tabs — wrapping grid instead of horizontal scroll */}
+          {/* Garment selection — category tabs + garment buttons */}
           <Card>
             <CardHeader><CardTitle className="text-base">انتخاب لباس و خدمات</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {/* Garment selection — wrapping grid (mobile-friendly, no horizontal scroll) */}
-              <div className="flex flex-wrap gap-2">
-                {garments?.map((g: CombinedGarmentType) => (
-                  <button
-                    key={g._id}
-                    type="button"
-                    onClick={() => switchGarmentTab(g._id)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                      activeGarment === g._id
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card hover:bg-accent"
-                    )}
-                  >
-                    <CatalogIcon
-                      icon={g.icon}
-                      image={g.image}
-                      size={16}
-                      className={activeGarment === g._id ? "text-primary-foreground" : "text-muted-foreground"}
-                    />
-                    {g.title}
-                    {g.isCustom && <span className="mr-1 text-xs opacity-60">★</span>}
-                  </button>
-                ))}
-              </div>
+            <CardContent className="space-y-3">
+              {/* Search bar */}
+              <SearchInput
+                value={garmentSearch}
+                onChange={setGarmentSearch}
+                placeholder="جستجوی نوع لباس..."
+                className="w-full"
+              />
 
-              {activeGarment && (
-                <>
-                  {/* Services for selected garment */}
+              {(() => {
+                // Require at least 2 characters before filtering
+                const q = garmentSearch.trim().toLowerCase();
+                const filtered = (garments || []).filter((g: CombinedGarmentType) => {
+                  if (q.length < 2) return true; // show all when < 2 chars
+                  return g.title.toLowerCase().includes(q) || (g.category || "").toLowerCase().includes(q);
+                });
+
+                const grouped = new Map<string, CombinedGarmentType[]>();
+                for (const g of filtered) {
+                  const cat = g.category || "سایر";
+                  if (!grouped.has(cat)) grouped.set(cat, []);
+                  grouped.get(cat)!.push(g);
+                }
+
+                if (grouped.size === 0) return <p className="py-4 text-center text-sm text-muted-foreground">لباسی یافت نشد</p>;
+
+                const isSearching = q.length >= 2;
+                // Sort categories alphabetically (Persian)
+                const cats = Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0], "fa"));
+
+                return (
+                  <>
+                    {/* Category tabs — horizontal row */}
+                    <div className="flex flex-wrap gap-2">
+                      {cats.map(([cat, items]) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            const next = new Set(expandedCategories);
+                            next.clear();
+                            next.add(cat);
+                            setExpandedCategories(next);
+                          }}
+                          className={cn(
+                            "rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors sm:text-sm",
+                            isSearching || expandedCategories.has(cat)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card hover:bg-accent",
+                          )}
+                        >
+                          {cat} <span className="opacity-60">({toPersianDigits(items.length)})</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Garment buttons for active/searched categories */}
+                    {cats.map(([cat, items]) => {
+                      const isOpen = isSearching || expandedCategories.has(cat);
+                      if (!isOpen) return null;
+                      return (
+                        <div key={cat} className="rounded-lg border bg-muted/20 p-3">
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+                              {cat}
+                            </span>
+                            <div className="h-px flex-1 bg-border" />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {items.map((g: CombinedGarmentType) => (
+                              <button
+                                key={g._id}
+                                type="button"
+                                onClick={() => switchGarmentTab(g._id)}
+                                className={cn(
+                                  "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                                  activeGarment === g._id
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-card hover:bg-accent"
+                                )}
+                              >
+                                <CatalogIcon icon={g.icon} image={g.image} size={16} className={activeGarment === g._id ? "text-primary-foreground" : "text-muted-foreground"} />
+                                {g.title}
+                                {g.isCustom && <span className="mr-1 text-xs opacity-60">★</span>}
+                                {g.isPricedPerMeter && (
+                                  <span className={cn("rounded px-1 text-[10px]", activeGarment === g._id ? "bg-primary-foreground/20" : "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400")}>متر</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {activeGarment && (
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                {/* Services for selected garment — 2-column grid */}
                   <div className="space-y-2">
                     <Label>خدمات</Label>
-                    <div className="space-y-2 rounded-lg border p-2 sm:p-3">
+                    <div className="grid grid-cols-1 gap-2 rounded-lg border p-2 sm:grid-cols-2 sm:p-3">
                       {services?.map((s: ServiceType) => {
                         const checked = selectedServices.includes(s._id);
                         const price = priceMap.get(`${activeGarment}-${s._id}`);
                         return (
-                          <div key={s._id} className="flex flex-col gap-2 rounded-md p-2 hover:bg-accent/50 sm:flex-row sm:items-center sm:gap-3">
+                          <div key={s._id} className="flex flex-col gap-2 rounded-md p-2 hover:bg-accent/50 sm:flex-row sm:items-center sm:gap-2">
                             <div className="flex items-center gap-2 sm:flex-1">
                               <Checkbox
                                 id={`svc-${s._id}`}
@@ -826,14 +921,13 @@ export default function NewOrderPage() {
                     <Plus className="size-4 ml-1" />
                     افزودن به سبد
                   </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Right: Cart + order info */}
-        <div className="space-y-4">
+        {/* Right: Cart + order info — sticky on desktop */}
+        <div className="space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
           {/* Cart */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -908,6 +1002,7 @@ export default function NewOrderPage() {
               {/* Delivery date */}
               <div className="space-y-1">
                 <Label className="text-sm">تاریخ تحویل</Label>
+                <HelpTip content="تاریخ مورد انتظار برای تحویل سفارش به مشتری. بر اساس تقویم شمسی انتخاب می‌شود." />
                 <div className="relative">
                   <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setShowDatePicker(!showDatePicker)}>
                     <Calendar className="size-4 ml-2" />
@@ -936,6 +1031,7 @@ export default function NewOrderPage() {
               {/* Discount */}
               <div className="space-y-1">
                 <Label className="text-sm">تخفیف (تومان)</Label>
+                <HelpTip content="مبلغ تخفیف کلی روی این سفارش. از مبلغ جمع کل کسر می‌شود." />
                 <PriceInput value={discount} onChange={setDiscount} />
               </div>
 
@@ -945,6 +1041,7 @@ export default function NewOrderPage() {
                   <Zap className="size-4 text-amber-500 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium">سفارش فوری</p>
+                    <HelpTip content="سفارش فوری با ضریب تعریف‌شده در تنظیمات (پیش‌فرض ۲) ضرب می‌شود. مناسب زمانی که مشتری عجله دارد." />
                     <p className="text-xs text-muted-foreground">ضریب: {toPersianDigits(urgentMultiplier)} برابر</p>
                   </div>
                 </div>
@@ -1005,6 +1102,26 @@ export default function NewOrderPage() {
           </Button>
         </div>
       </div>
+
+      {/* Sticky bottom bar — live price summary (mobile only) */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 px-4 py-3 shadow-lg backdrop-blur-md lg:hidden">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">مبلغ نهایی</p>
+              <p className="text-lg font-bold text-primary">{formatToman(finalPrice)}</p>
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              disabled={createMutation.isPending || !selectedCustomer}
+              onClick={handleSubmit}
+            >
+              {createMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "ثبت سفارش"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

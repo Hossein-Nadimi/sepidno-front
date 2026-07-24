@@ -173,11 +173,13 @@ export default function CustomersPage() {
                       <TableCell label="تاریخ ثبت" className="text-sm text-muted-foreground">{toJalaliDateTime(c.createdAt)}</TableCell>
                       <TableCell label="عملیات">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => router.push(`/customers/${c._id}`)} title="مشاهده">
-                            <Eye className="size-4" />
+                          <Button variant="outline" size="sm" onClick={() => router.push(`/customers/${c._id}`)}>
+                            <Eye className="size-3.5 ml-1" />
+                            مشاهده
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => router.push(`/customers/${c._id}?edit=1`)} title="ویرایش">
-                            <Edit className="size-4" />
+                          <Button variant="outline" size="sm" onClick={() => router.push(`/customers/${c._id}?edit=1`)}>
+                            <Edit className="size-3.5 ml-1" />
+                            ویرایش
                           </Button>
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setDeleteId(c._id)} title="حذف">
                             <Trash2 className="size-4" />

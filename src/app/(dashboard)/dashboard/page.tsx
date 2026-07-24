@@ -36,6 +36,7 @@ import { dashboardService, calendarService } from "@/services";
 import { useAuthStore } from "@/store/auth";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
+import { CountUp } from "@/components/common/count-up";
 import { CardLoading } from "@/components/common/loading";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -161,43 +162,50 @@ export default function DashboardPage() {
           title="سفارشات امروز"
           value={formatNumber(data.todayOrders)}
           icon={<ShoppingCart className="size-5" />}
+          variant="blue"
         />
         <StatCard
           title="در حال انجام"
           value={formatNumber(data.inProgress)}
           icon={<Clock className="size-5" />}
+          variant="purple"
         />
         <StatCard
           title="آماده تحویل"
           value={formatNumber(data.readyForDelivery)}
           icon={<PackageCheck className="size-5" />}
+          variant="emerald"
         />
         <StatCard
           title="تحویل شده"
           value={formatNumber(data.completed)}
           icon={<CheckCircle2 className="size-5" />}
+          variant="emerald"
         />
         <StatCard
           title="سفارشات تأخیر یافته"
           value={formatNumber(data.delayed)}
           icon={<AlertTriangle className="size-5" />}
-          className="border-amber-200 bg-amber-50 dark:bg-amber-950/20"
+          variant="red"
           href="/orders?delayed=true"
         />
         <StatCard
           title="درآمد امروز"
           value={formatToman(data.todayRevenue)}
           icon={<Wallet className="size-5" />}
+          variant="emerald"
         />
         <StatCard
           title="درآمد هفته"
           value={formatToman(data.weeklyRevenue)}
           icon={<CalendarRange className="size-5" />}
+          variant="blue"
         />
         <StatCard
           title="درآمد ماه"
           value={formatToman(data.monthlyRevenue)}
           icon={<CalendarDays className="size-5" />}
+          variant="blue"
         />
       </div>
 
@@ -302,11 +310,11 @@ export default function DashboardPage() {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
                 <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis
                   stroke="var(--muted-foreground)"
@@ -320,8 +328,9 @@ export default function DashboardPage() {
                   contentStyle={{
                     backgroundColor: "var(--background)",
                     border: "1px solid var(--border)",
-                    borderRadius: "8px",
+                    borderRadius: "12px",
                     fontSize: "12px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                   }}
                   formatter={(value) => [formatToman(Number(value)), "درآمد"]}
                 />
@@ -329,8 +338,10 @@ export default function DashboardPage() {
                   type="monotone"
                   dataKey="revenue"
                   stroke="var(--chart-1)"
-                  strokeWidth={2}
+                  strokeWidth={3}
                   fill="url(#revGradient)"
+                  dot={{ fill: "var(--chart-1)", r: 3 }}
+                  activeDot={{ r: 5, strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -345,54 +356,121 @@ export default function DashboardPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <defs>
+                  <linearGradient id="ordGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={1} />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.5} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
                 <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "var(--background)",
                     border: "1px solid var(--border)",
-                    borderRadius: "8px",
+                    borderRadius: "12px",
                     fontSize: "12px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                   }}
                   formatter={(value) => [toPersianDigits(Number(value)), "سفارش"]}
                 />
-                <Bar dataKey="orders" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="orders" fill="url(#ordGradient)" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* Bottom row: SMS + Top stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="پیامک باقی‌مانده (اشتراک)"
-          value={formatNumber(data.remainingMonthlySms)}
-          icon={<MessageSquare className="size-5" />}
-          description="سهمیه ماهانه اشتراک"
-        />
-        <StatCard
-          title="پیامک باقی‌مانده (خریداری)"
-          value={formatNumber(data.remainingPurchasedSms)}
-          icon={<MessageSquare className="size-5" />}
-          description="بسته‌های خریداری شده"
-        />
+      {/* Bottom section: SMS + Top stats + Expenses + New customers — all in a balanced grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* SMS usage with progress bar */}
+        {(() => {
+          const subRemaining = data.remainingMonthlySms ?? 0;
+          const subTotal = (data as { monthlySmsQuota?: number }).monthlySmsQuota ?? 0;
+          const subUsed = Math.max(0, subTotal - subRemaining);
+          const subPercent = subTotal > 0 ? Math.round((subUsed / subTotal) * 100) : 0;
+          const purchasedRemaining = data.remainingPurchasedSms ?? 0;
+          const totalRemaining = subRemaining + purchasedRemaining;
+
+          return (
+            <Card className="overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">سهمیه پیامک</p>
+                    <p className="text-2xl font-bold">
+                      {typeof totalRemaining === "number" ? <CountUp value={totalRemaining} /> : totalRemaining}
+                      <span className="text-sm font-normal text-muted-foreground"> باقی‌مانده</span>
+                    </p>
+                  </div>
+                  <div className="flex size-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                    <MessageSquare className="size-5" />
+                  </div>
+                </div>
+
+                {/* Subscription quota progress bar */}
+                {subTotal > 0 && (
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">اشتراک ماهانه</span>
+                      <span className="font-medium">
+                        {toPersianDigits(subRemaining)} از {toPersianDigits(subTotal)}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          subPercent > 80 ? "bg-red-500" : subPercent > 50 ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        style={{ width: `${Math.min(subPercent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Purchased packages badge */}
+                {purchasedRemaining > 0 && (
+                  <div className="mt-3 flex items-center justify-between rounded-lg border border-blue-200/50 bg-blue-50/50 px-3 py-2 text-xs dark:border-blue-900/30 dark:bg-blue-950/10">
+                    <span className="text-muted-foreground">بسته‌های خریداری شده</span>
+                    <span className="font-medium text-blue-600 dark:text-blue-400">
+                      {toPersianDigits(purchasedRemaining)} پیامک
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Top service */}
         <StatCard
           title="محبوب‌ترین خدمت"
           value={data.topService?.title || "—"}
           icon={<TrendingUp className="size-5" />}
           description={data.topService ? `${formatNumber(data.topService.count)} سفارش` : undefined}
+          variant="purple"
         />
+
+        {/* Top garment */}
         <StatCard
           title="پرتکرارترین لباس"
           value={data.topGarment?.title || "—"}
           icon={<Shirt className="size-5" />}
           description={data.topGarment ? `${formatNumber(data.topGarment.count)} سفارش` : undefined}
+          variant="blue"
+        />
+
+        {/* New customers */}
+        <StatCard
+          title="مشتریان جدید امروز"
+          value={formatNumber(businessData.newCustomers)}
+          icon={<Award className="size-5" />}
+          variant="emerald"
         />
       </div>
 
-      {/* Expenses + Low stock */}
+      {/* Expenses + Low stock — side by side */}
       <div className="grid gap-4 lg:grid-cols-2">
         {typeof businessData.monthlyExpenses === "number" && (
           <Card>
@@ -432,19 +510,6 @@ export default function DashboardPage() {
           </Card>
         )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="size-5 text-primary" />
-            مشتریان جدید امروز
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-3xl font-bold">{formatNumber(businessData.newCustomers)}</p>
-          <p className="mt-1 text-sm text-muted-foreground">مشتری جدید در امروز ثبت شده است</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -21,7 +21,8 @@ import { TableLoading } from "@/components/common/loading";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDebounced } from "@/hooks/use-debounced";
-import { formatToman, toPersianDigits } from "@/lib/utils";
+import { Avatar } from "@/components/common/avatar";
+import { formatToman, toPersianDigits, cn } from "@/lib/utils";
 import { toJalali, jalaliStringToLongLabel, JALALI_MONTHS } from "@/lib/jalali";
 
 moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
@@ -47,6 +48,7 @@ function OrdersPageInner() {
   const [status, setStatus] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<string>(delayedMode ? "deliveryDate" : "-createdAt");
+  const [quickDateFilter, setQuickDateFilter] = useState<string>("");
   const debouncedSearch = useDebounced(search, 400);
 
   const { data: statuses } = useQuery({
@@ -55,7 +57,7 @@ function OrdersPageInner() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", { page, search: debouncedSearch, status, sortBy, delayedMode, deliveryOnParam }],
+    queryKey: ["orders", { page, search: debouncedSearch, status, sortBy, delayedMode, deliveryOnParam, quickDateFilter }],
     queryFn: () =>
       orderService.list({
         page,
@@ -65,6 +67,7 @@ function OrdersPageInner() {
         status: status !== "all" ? status : undefined,
         delayed: delayedMode ? "true" : undefined,
         deliveryOn: deliveryOnParam || undefined,
+        preset: quickDateFilter || undefined,
       } as Record<string, unknown>),
   });
 
@@ -162,13 +165,47 @@ function OrdersPageInner() {
       {!delayedMode && !deliveryOnParam && (
         <Card>
           <CardContent className="flex flex-col gap-3 p-3 sm:p-4">
-            <SearchInput
-              value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
-              placeholder="جستجو با شماره سفارش یا موبایل"
-              className="w-full"
-            />
+            {/* Quick date filters + sort in one row */}
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { label: "همه", value: "" },
+                { label: "امروز", value: "today" },
+                { label: "این هفته", value: "thisWeek" },
+                { label: "این ماه", value: "thisMonth" },
+              ].map((q) => (
+                <Button
+                  key={q.value}
+                  variant={quickDateFilter === q.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setQuickDateFilter(q.value); setPage(1); }}
+                >
+                  {q.label}
+                </Button>
+              ))}
+              <div className="flex-1" />
+              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="مرتب‌سازی" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="-createdAt">جدیدترین</SelectItem>
+                  <SelectItem value="createdAt">قدیمی‌ترین</SelectItem>
+                  <SelectItem value="-deliveryDate">نزدیک‌ترین تحویل</SelectItem>
+                  <SelectItem value="deliveryDate">دورترین تحویل</SelectItem>
+                  <SelectItem value="-finalPrice">بیشترین مبلغ</SelectItem>
+                  <SelectItem value="finalPrice">کمترین مبلغ</SelectItem>
+                  <SelectItem value="-urgent">فوری اول</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <SearchInput
+                value={search}
+                onChange={(v) => { setSearch(v); setPage(1); }}
+                placeholder="جستجو با شماره سفارش یا موبایل"
+                className="w-full sm:flex-1"
+              />
               <div className="flex items-center gap-2">
                 <Filter className="size-4 shrink-0 text-muted-foreground" />
                 <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
@@ -183,22 +220,6 @@ function OrdersPageInner() {
                   </SelectContent>
                 </Select>
               </div>
-              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="مرتب‌سازی" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="-createdAt">جدیدترین</SelectItem>
-                  <SelectItem value="createdAt">قدیمی‌ترین</SelectItem>
-                  <SelectItem value="-deliveryDate">نزدیک‌ترین تحویل</SelectItem>
-                  <SelectItem value="deliveryDate">دورترین تحویل</SelectItem>
-                  <SelectItem value="-finalPrice">بیشترین مبلغ</SelectItem>
-                  <SelectItem value="finalPrice">کمترین مبلغ</SelectItem>
-                  <SelectItem value="-urgent">فوری اول</SelectItem>
-                  <SelectItem value="-acceptedAt">پذیرش اخیر</SelectItem>
-                  <SelectItem value="-updatedAt">آخرین تغییر</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
         </Card>
@@ -260,8 +281,31 @@ function OrdersPageInner() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell label="مشتری">{customer ? `${customer.firstName} ${customer.lastName}` : "—"}</TableCell>
-                        <TableCell label="تاریخ تحویل" className="text-sm text-muted-foreground">{toJalali(o.deliveryDate)}</TableCell>
+                        <TableCell label="مشتری">
+                          {customer ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar name={`${customer.firstName} ${customer.lastName}`} size={32} />
+                              <span className="truncate">{customer.firstName} {customer.lastName}</span>
+                            </div>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell label="تاریخ تحویل" className="text-sm text-muted-foreground">
+                          <div>{toJalali(o.deliveryDate)}</div>
+                          {(() => {
+                            if (!o.deliveryDate || statusObj?.isCompleted || statusObj?.isCancelled) return null;
+                            const now = new Date();
+                            now.setHours(0, 0, 0, 0);
+                            const delivery = new Date(o.deliveryDate);
+                            delivery.setHours(0, 0, 0, 0);
+                            const diffMs = delivery.getTime() - now.getTime();
+                            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                            if (diffDays === 0) return <span className="text-xs font-medium text-blue-600 dark:text-blue-400">امروز</span>;
+                            if (diffDays === 1) return <span className="text-xs font-medium text-blue-600 dark:text-blue-400">۱ روز تا تحویل</span>;
+                            if (diffDays > 1 && diffDays <= 3) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{toPersianDigits(diffDays)} روز تا تحویل</span>;
+                            if (diffDays < 0) return <span className="text-xs font-medium text-red-600 dark:text-red-400">{toPersianDigits(Math.abs(diffDays))} روز تأخیر</span>;
+                            return null;
+                          })()}
+                        </TableCell>
                         <TableCell label="آیتم‌ها" className="text-center">{toPersianDigits(o.items.length)}</TableCell>
                         <TableCell label="مبلغ" className="text-center font-medium">{formatToman(o.finalPrice)}</TableCell>
                         <TableCell label="وضعیت" className="text-center">
@@ -276,7 +320,16 @@ function OrdersPageInner() {
                               });
                             }}
                           >
-                            <SelectTrigger className="h-8 w-32 mx-auto">
+                            <SelectTrigger className={cn(
+                              "h-8 w-32 mx-auto border-2 font-medium",
+                              statusObj?.isCompleted
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-400"
+                                : statusObj?.isCancelled
+                                  ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
+                                  : statusObj?.title === "آماده تحویل" || statusObj?.slug === "ready"
+                                    ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-400"
+                                    : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400"
+                            )}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -287,12 +340,14 @@ function OrdersPageInner() {
                           </Select>
                         </TableCell>
                         <TableCell label="عملیات">
-                          <div className="flex items-center justify-end">
-                            <Button variant="ghost" size="icon" onClick={() => router.push(`/orders/${o._id}`)} title="مشاهده">
-                              <Eye className="size-4" />
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950/20" onClick={() => router.push(`/orders/${o._id}`)}>
+                              <Eye className="size-3.5 ml-1" />
+                              مشاهده
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => router.push(`/orders/${o._id}/edit`)} title="ویرایش">
-                              <Edit2 className="size-4" />
+                            <Button variant="outline" size="sm" className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-900 dark:text-emerald-400 dark:hover:bg-emerald-950/20" onClick={() => router.push(`/orders/${o._id}/edit`)}>
+                              <Edit2 className="size-3.5 ml-1" />
+                              ویرایش
                             </Button>
                           </div>
                         </TableCell>
