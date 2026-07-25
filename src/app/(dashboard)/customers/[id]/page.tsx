@@ -32,7 +32,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
 import { TableLoading } from "@/components/common/loading";
 import { EmptyState } from "@/components/common/empty-state";
-import { JalaliDatePicker } from "@/components/common/jalali-date-picker";
+import { BirthdayPicker } from "@/components/common/birthday-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumber, formatToman } from "@/lib/utils";
 import { toJalali, toJalaliDateTime, fromJalali } from "@/lib/jalali";
@@ -79,18 +79,28 @@ export default function CustomerDetailPage() {
   const updateMutation = useMutation({
     mutationFn: (values: FormValues) =>
       customerService.update(params.id, {
-        firstName: values.firstName || undefined,
+        // Pass firstName as empty string when cleared — backend checks
+        // `!== undefined` so empty string will properly overwrite. Avoid
+        // the `|| undefined` shortcut which would skip clearing the field.
+        firstName: values.firstName,
         lastName: values.lastName,
         mobile: values.mobile,
-        phone: values.phone || undefined,
-        address: values.address || undefined,
-        birthDate: birthDateISO || undefined,
-        gender: gender || undefined,
-        notes: values.notes || undefined,
+        phone: values.phone,
+        address: values.address,
+        // Empty string means "clear the birth date" — send null so backend
+        // can distinguish "clear" from "skip update". The backend validator
+        // accepts null for birthDate via .nullable().
+        birthDate: birthDateISO || null,
+        // Convert empty-string gender to null so backend clears it.
+        gender: gender === "" ? null : gender,
+        notes: values.notes,
       }),
     onSuccess: () => {
       toast.success("اطلاعات مشتری به‌روزرسانی شد");
       queryClient.invalidateQueries({ queryKey: ["customer", params.id] });
+      // Also invalidate the customer LIST so the customers page shows
+      // the updated name without requiring a manual refresh.
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       setEditMode(false);
     },
   });
@@ -222,27 +232,24 @@ export default function CustomerDetailPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>تاریخ تولد (اختیاری)</Label>
-                  <div className="relative">
+                  <div>
                     <Button
                       type="button"
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => setShowBirthDatePicker(!showBirthDatePicker)}
+                      onClick={() => setShowBirthDatePicker(true)}
                     >
                       <Calendar className="size-4 ml-2" />
                       {birthDateJalali || "انتخاب تاریخ"}
                     </Button>
-                    {showBirthDatePicker && (
-                      <div className="absolute z-50 mt-1 left-0">
-                        <JalaliDatePicker
-                          value={birthDateJalali}
-                          onChange={(v) => {
-                            setBirthDateJalali(v);
-                            setShowBirthDatePicker(false);
-                          }}
-                        />
-                      </div>
-                    )}
+                    <BirthdayPicker
+                      open={showBirthDatePicker}
+                      onOpenChange={setShowBirthDatePicker}
+                      value={birthDateJalali}
+                      onChange={(v) => {
+                        setBirthDateJalali(v);
+                      }}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">

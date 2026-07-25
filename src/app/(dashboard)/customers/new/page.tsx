@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/common/page-header";
-import { JalaliDatePicker } from "@/components/common/jalali-date-picker";
+import { BirthdayPicker } from "@/components/common/birthday-picker";
 
 moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
 
@@ -121,34 +121,24 @@ export default function NewCustomerPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="birthDate">تاریخ تولد (اختیاری)</Label>
-                <div className="relative">
+                <div>
                   <Button
                     type="button"
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={() => setShowDatePicker(!showDatePicker)}
+                    onClick={() => setShowDatePicker(true)}
                   >
                     <Calendar className="size-4 ml-2" />
                     {birthDateJalali || "انتخاب تاریخ"}
                   </Button>
-                  {showDatePicker && (
-                    <div className="absolute z-50 mt-1 left-0">
-                      <JalaliDatePicker
-                        value={birthDateJalali}
-                        onChange={(v) => {
-                          setBirthDateJalali(v);
-                          // Convert Jalali to Gregorian for the form
-                          const m = moment(v, "jYYYY/jMM/jDD", true);
-                          if (m.isValid()) {
-                            // Store as ISO string
-                            const gregorian = m.format("YYYY-MM-DD");
-                            // Use register to set value
-                          }
-                          setShowDatePicker(false);
-                        }}
-                      />
-                    </div>
-                  )}
+                  <BirthdayPicker
+                    open={showDatePicker}
+                    onOpenChange={setShowDatePicker}
+                    value={birthDateJalali}
+                    onChange={(v) => {
+                      setBirthDateJalali(v);
+                    }}
+                  />
                 </div>
               </div>
               <div className="space-y-2">

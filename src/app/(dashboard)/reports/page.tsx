@@ -23,6 +23,7 @@ import { PageHelp } from "@/components/common/page-help";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StatCard } from "@/components/common/stat-card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatNumber, formatToman, toPersianDigits } from "@/lib/utils";
 import {
@@ -86,7 +87,7 @@ export default function ReportsPage() {
   const servicesData = (services as { mostUsed?: Array<{ title: string; count: number; revenue: number }> })?.mostUsed?.slice(0, 8) || [];
   const garmentsData = (garments as { mostFrequent?: Array<{ title: string; count: number }> })?.mostFrequent?.slice(0, 8) || [];
   const cashbackStats = cashback as { generated?: number; used?: number; expired?: number } | undefined;
-  const smsStats = sms as { sent?: number; failed?: number; remainingMonthly?: number; remainingPackages?: number } | undefined;
+  const smsStats = sms as { sent?: number; sentCount?: number; failed?: number; remainingMonthly?: number; remainingPackages?: number } | undefined;
   const orderStats = orders as { total?: number; delayed?: number; byStatus?: Array<{ statusId: string; count: number; revenue: number }> } | undefined;
   const customerStats = customers as { newCustomers?: number; repeatCustomers?: number; topCustomers?: Array<{ firstName: string; lastName: string; totalSpending: number }> } | undefined;
 
@@ -153,7 +154,7 @@ export default function ReportsPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">سال:</span>
                   <Select value={jalaliYear} onValueChange={setJalaliYear}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-28">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -166,108 +167,188 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Yearly stats */}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="rounded-lg border p-3">
+              {/* Yearly stats — 1 col on phones, 2 on small, 5 on large */}
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="rounded-lg border p-3 sm:p-3.5">
                   <p className="text-xs text-muted-foreground">درآمد کل سال</p>
-                  <p className="mt-1 text-lg font-bold text-primary">{formatToman(yearly?.totalRevenue ?? 0)}</p>
+                  <p className="mt-1 text-base font-bold text-primary break-words sm:text-lg">{formatToman(yearly?.totalRevenue ?? 0)}</p>
                 </div>
-                <div className="rounded-lg border p-3">
+                <div className="rounded-lg border p-3 sm:p-3.5">
                   <p className="text-xs text-muted-foreground">هزینه کل سال</p>
-                  <p className="mt-1 text-lg font-bold text-red-600 dark:text-red-400">{formatToman(yearly?.totalExpenses ?? 0)}</p>
+                  <p className="mt-1 text-base font-bold text-red-600 dark:text-red-400 break-words sm:text-lg">{formatToman(yearly?.totalExpenses ?? 0)}</p>
                 </div>
-                <div className="rounded-lg border p-3">
+                <div className="rounded-lg border p-3 sm:p-3.5">
                   <p className="text-xs text-muted-foreground">سود کل سال</p>
                   {(() => {
                     const profit = yearly?.totalProfit ?? (yearly?.totalRevenue ?? 0);
                     return (
-                      <p className={`mt-1 text-lg font-bold ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                      <p className={`mt-1 text-base font-bold break-words sm:text-lg ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                         {formatToman(profit)}
                       </p>
                     );
                   })()}
                 </div>
-                <div className="rounded-lg border p-3">
+                <div className="rounded-lg border p-3 sm:p-3.5">
                   <p className="text-xs text-muted-foreground">تعداد سفارشات</p>
-                  <p className="mt-1 text-lg font-bold">{toPersianDigits(yearly?.totalOrders ?? 0)}</p>
+                  <p className="mt-1 text-base font-bold break-words sm:text-lg">{toPersianDigits(yearly?.totalOrders ?? 0)}</p>
                 </div>
-                <div className="rounded-lg border p-3">
+                <div className="rounded-lg border p-3 sm:p-3.5">
                   <p className="text-xs text-muted-foreground">مشتریان جدید</p>
-                  <p className="mt-1 text-lg font-bold">{toPersianDigits(yearly?.newCustomers ?? 0)}</p>
+                  <p className="mt-1 text-base font-bold break-words sm:text-lg">{toPersianDigits(yearly?.newCustomers ?? 0)}</p>
                 </div>
               </div>
 
-              {/* Monthly chart - vertical bars with two series */}
+              {/* Monthly chart — vertical bars on desktop, hidden on phones
+                  (phones get the per-month cards below which are more readable
+                  than 36 squeezed bars in 360px). */}
               {monthlyData.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">داده‌ای برای نمایش وجود ندارد</p>
               ) : (
-                <ResponsiveContainer width="100%" height={380}>
-                  <BarChart data={monthlyData} margin={{ top: 20, right: 10, left: 0, bottom: 10 }}>
-                    <defs>
-                      <linearGradient id="monthlyRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={1} />
-                        <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.6} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => toPersianDigits(v)} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-                      formatter={(v, name) => (name === "درآمد" || name === "هزینه") ? [formatToman(Number(v)), name as string] : [toPersianDigits(Number(v)), name as string]}
-                    />
-                    <Legend />
-                    <Bar dataKey="درآمد" fill="url(#monthlyRevenue)" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="هزینه" fill="var(--destructive)" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="سفارشات" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="hidden h-[380px] w-full sm:block">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 4 }}>
+                      <defs>
+                        <linearGradient id="monthlyRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={1} />
+                          <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.6} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} interval={0} />
+                      <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => toPersianDigits(v)} width={50} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                        formatter={(v, name) => (name === "درآمد" || name === "هزینه") ? [formatToman(Number(v)), name as string] : [toPersianDigits(Number(v)), name as string]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Bar dataKey="درآمد" fill="url(#monthlyRevenue)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="هزینه" fill="var(--destructive)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="سفارشات" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               )}
 
-              {/* Monthly breakdown table */}
+              {/* Monthly breakdown — table on desktop, cards on mobile */}
               {yearly && yearly.months.some((m) => m.count > 0 || m.expenses) && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-muted-foreground">
-                        <th className="p-2 text-right">ماه</th>
-                        <th className="p-2 text-center">تعداد سفارش</th>
-                        <th className="p-2 text-center">درآمد</th>
-                        <th className="p-2 text-center">هزینه‌ها</th>
-                        <th className="p-2 text-center">سود</th>
-                        <th className="p-2 text-center">میانگین سفارش</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {yearly.months.map((m) => {
-                        const expenses = m.expenses ?? 0;
-                        const profit = m.profit ?? (m.revenue - expenses);
-                        return (
-                          <tr key={m.month} className="border-b last:border-0 hover:bg-muted/30">
-                            <td className="p-2 font-medium">{m.name}</td>
-                            <td className="p-2 text-center">{toPersianDigits(m.count)}</td>
-                            <td className="p-2 text-center text-emerald-600 dark:text-emerald-400">{formatToman(m.revenue)}</td>
-                            <td className="p-2 text-center text-red-600 dark:text-red-400">{expenses > 0 ? formatToman(expenses) : "—"}</td>
-                            <td className={`p-2 text-center font-medium ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{expenses > 0 ? formatToman(profit) : "—"}</td>
-                            <td className="p-2 text-center text-muted-foreground">{m.count > 0 ? formatToman(Math.round(m.revenue / m.count)) : "—"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    {yearly && (
-                      <tfoot>
-                        <tr className="border-t-2 font-bold">
-                          <td className="p-2">جمع کل</td>
-                          <td className="p-2 text-center">{toPersianDigits(yearly.totalOrders)}</td>
-                          <td className="p-2 text-center text-emerald-600 dark:text-emerald-400">{formatToman(yearly.totalRevenue)}</td>
-                          <td className="p-2 text-center text-red-600 dark:text-red-400">{formatToman(yearly.totalExpenses ?? 0)}</td>
-                          <td className={`p-2 text-center ${(yearly.totalProfit ?? yearly.totalRevenue) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatToman(yearly.totalProfit ?? yearly.totalRevenue)}</td>
-                          <td className="p-2 text-center text-muted-foreground">—</td>
+                <>
+                  {/* Desktop / sm+ table (hidden on mobile) */}
+                  <div className="hidden overflow-x-auto sm:block">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-muted-foreground">
+                          <th className="p-2 text-right">ماه</th>
+                          <th className="p-2 text-center">تعداد سفارش</th>
+                          <th className="p-2 text-center">درآمد</th>
+                          <th className="p-2 text-center">هزینه‌ها</th>
+                          <th className="p-2 text-center">سود</th>
+                          <th className="p-2 text-center">میانگین سفارش</th>
                         </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {yearly.months.map((m) => {
+                          const expenses = m.expenses ?? 0;
+                          const profit = m.profit ?? (m.revenue - expenses);
+                          return (
+                            <tr key={m.month} className="border-b last:border-0 hover:bg-muted/30">
+                              <td className="p-2 font-medium">{m.name}</td>
+                              <td className="p-2 text-center">{toPersianDigits(m.count)}</td>
+                              <td className="p-2 text-center text-emerald-600 dark:text-emerald-400">{formatToman(m.revenue)}</td>
+                              <td className="p-2 text-center text-red-600 dark:text-red-400">{expenses > 0 ? formatToman(expenses) : "—"}</td>
+                              <td className={`p-2 text-center font-medium ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{expenses > 0 ? formatToman(profit) : "—"}</td>
+                              <td className="p-2 text-center text-muted-foreground">{m.count > 0 ? formatToman(Math.round(m.revenue / m.count)) : "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      {yearly && (
+                        <tfoot>
+                          <tr className="border-t-2 font-bold">
+                            <td className="p-2">جمع کل</td>
+                            <td className="p-2 text-center">{toPersianDigits(yearly.totalOrders)}</td>
+                            <td className="p-2 text-center text-emerald-600 dark:text-emerald-400">{formatToman(yearly.totalRevenue)}</td>
+                            <td className="p-2 text-center text-red-600 dark:text-red-400">{formatToman(yearly.totalExpenses ?? 0)}</td>
+                            <td className={`p-2 text-center ${(yearly.totalProfit ?? yearly.totalRevenue) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatToman(yearly.totalProfit ?? yearly.totalRevenue)}</td>
+                            <td className="p-2 text-center text-muted-foreground">—</td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+
+                  {/* Mobile cards (shown only below sm) — redesigned for readability */}
+                  <div className="space-y-2 sm:hidden">
+                    {/* Total summary card at the TOP so user sees the bottom line first */}
+                    <div className="rounded-lg border-2 border-primary/40 bg-primary/5 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold">جمع کل سال</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {toPersianDigits(yearly.totalOrders)} سفارش
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">درآمد</p>
+                          <p className="mt-0.5 font-bold text-emerald-600 dark:text-emerald-400 break-words">{formatToman(yearly.totalRevenue).replace(" تومان", "")}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">هزینه</p>
+                          <p className="mt-0.5 font-bold text-red-600 dark:text-red-400 break-words">{formatToman(yearly.totalExpenses ?? 0).replace(" تومان", "")}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">سود</p>
+                          <p className={`mt-0.5 font-bold break-words ${(yearly.totalProfit ?? yearly.totalRevenue) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatToman(yearly.totalProfit ?? yearly.totalRevenue).replace(" تومان", "")}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Per-month cards — show ALL 12 months (even empty ones)
+                        so the user can see the full year overview. Empty months
+                        are shown with reduced opacity + "بدون سفارش" badge. */}
+                    {yearly.months.map((m) => {
+                      const expenses = m.expenses ?? 0;
+                      const profit = m.profit ?? (m.revenue - expenses);
+                      const hasData = m.count > 0 || expenses > 0;
+                      return (
+                        <div
+                          key={m.month}
+                          className={`rounded-lg border p-3 ${!hasData ? "opacity-60" : ""}`}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold">{m.name}</span>
+                            {hasData ? (
+                              <Badge variant="outline" className="text-[10px]">
+                                {toPersianDigits(m.count)} سفارش
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                                بدون سفارش
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <p className="text-muted-foreground">درآمد</p>
+                              <p className="mt-0.5 font-semibold text-emerald-600 dark:text-emerald-400 break-words">{hasData ? formatToman(m.revenue).replace(" تومان", "") : "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">هزینه</p>
+                              <p className="mt-0.5 font-semibold text-red-600 dark:text-red-400 break-words">{expenses > 0 ? formatToman(expenses).replace(" تومان", "") : "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">سود</p>
+                              <p className={`mt-0.5 font-semibold break-words ${profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{hasData ? formatToman(profit).replace(" تومان", "") : "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">میانگین</p>
+                              <p className="mt-0.5 font-semibold text-muted-foreground break-words">{m.count > 0 ? formatToman(Math.round(m.revenue / m.count)).replace(" تومان", "") : "—"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -490,11 +571,11 @@ export default function ReportsPage() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquare className="size-5" />گزارش پیامک</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-4">
-                <StatCard title="ارسال شده" value={formatNumber(smsStats?.sent ?? 0)} icon={<MessageSquare className="size-5" />} />
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <StatCard title="اعتبار مصرف شده" value={formatNumber(smsStats?.sent ?? 0)} icon={<MessageSquare className="size-5" />} description="مجموع اعتبار پیامک‌های ارسال شده" />
+                <StatCard title="تعداد پیامک" value={formatNumber(smsStats?.sentCount ?? 0)} icon={<MessageSquare className="size-5" />} description="تعداد پیامک‌های موفق" />
                 <StatCard title="ناموفق" value={formatNumber(smsStats?.failed ?? 0)} icon={<MessageSquare className="size-5" />} />
-                <StatCard title="باقی‌مانده اشتراک" value={formatNumber(smsStats?.remainingMonthly ?? 0)} icon={<MessageSquare className="size-5" />} />
-                <StatCard title="باقی‌مانده بسته" value={formatNumber(smsStats?.remainingPackages ?? 0)} icon={<MessageSquare className="size-5" />} />
+                <StatCard title="باقی‌مانده (اشتراک + بسته)" value={formatNumber((smsStats?.remainingMonthly ?? 0) + (smsStats?.remainingPackages ?? 0))} icon={<MessageSquare className="size-5" />} description={`اشتراک: ${formatNumber(smsStats?.remainingMonthly ?? 0)} / بسته: ${formatNumber(smsStats?.remainingPackages ?? 0)}`} />
               </div>
             </CardContent>
           </Card>

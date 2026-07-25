@@ -8,6 +8,7 @@ import { settingsService, loyaltyService } from "@/services";
 import { PageHeader } from "@/components/common/page-header";
 import { PageHelp } from "@/components/common/page-help";
 import { HelpTip } from "@/components/common/help-tip";
+import { PriceInput } from "@/components/common/price-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -453,30 +454,25 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>مقدار پاداش ({loyaltyForm.rewardType === "percentage" ? "درصد" : "تومان"})</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={loyaltyForm.rewardValue}
-                    onChange={(e) => setLoyaltyForm({ ...loyaltyForm, rewardValue: Number(e.target.value) })}
-                  />
+                  {loyaltyForm.rewardType === "percentage" ? (
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={loyaltyForm.rewardValue}
+                      onChange={(e) => setLoyaltyForm({ ...loyaltyForm, rewardValue: Number(e.target.value) })}
+                    />
+                  ) : (
+                    <PriceInput value={loyaltyForm.rewardValue} onChange={(v) => setLoyaltyForm({ ...loyaltyForm, rewardValue: v })} />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>حداقل مبلغ سفارش</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={loyaltyForm.minimumOrder}
-                    onChange={(e) => setLoyaltyForm({ ...loyaltyForm, minimumOrder: Number(e.target.value) })}
-                  />
+                  <PriceInput value={loyaltyForm.minimumOrder} onChange={(v) => setLoyaltyForm({ ...loyaltyForm, minimumOrder: v })} />
                 </div>
                 <div className="space-y-2">
                   <Label>حداکثر کش‌بک</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={loyaltyForm.maximumCashback}
-                    onChange={(e) => setLoyaltyForm({ ...loyaltyForm, maximumCashback: Number(e.target.value) })}
-                  />
+                  <PriceInput value={loyaltyForm.maximumCashback} onChange={(v) => setLoyaltyForm({ ...loyaltyForm, maximumCashback: v })} />
                 </div>
                 <div className="space-y-2">
                   <Label>مدت انقضا (روز)</Label>

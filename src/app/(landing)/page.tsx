@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -27,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toPersianDigits, formatNumber, formatToman, cn } from "@/lib/utils";
 import { usePublicPlans } from "@/hooks/use-public-plans";
+import { useAuthStore } from "@/store/auth";
 
 const FEATURES = [
   { icon: ShoppingBag, title: "مدیریت سفارشات", desc: "ثبت، پیگیری و چاپ قبض سفارشات با چک‌لیست آسیب‌ها" },
@@ -70,6 +73,21 @@ const FAQ_ITEMS = [
 export default function HomePage() {
   const { data: apiPlans, isLoading: plansLoading } = usePublicPlans();
   const plans = apiPlans && apiPlans.length > 0 ? apiPlans : FALLBACK_PLANS;
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // PWA re-login fix: when a user opens the PWA (which starts at "/?source=pwa"),
+  // if they are already authenticated, jump straight to /dashboard instead of
+  // showing the marketing landing page. This is especially important for
+  // Android/Chrome where localStorage is shared between browser and PWA —
+  // without this, the user has to manually navigate to /dashboard after each
+  // PWA launch.
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, router]);
+
   return (
     <>
       {/* Hero */}

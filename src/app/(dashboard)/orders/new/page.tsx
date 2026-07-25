@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/common/page-header";
 import { PageHelp } from "@/components/common/page-help";
 import { JalaliDatePicker } from "@/components/common/jalali-date-picker";
+import { BirthdayPicker } from "@/components/common/birthday-picker";
 import { PriceInput } from "@/components/common/price-input";
 import { CatalogIcon } from "@/components/common/catalog-icon";
 import { SearchInput } from "@/components/common/search-input";
@@ -74,6 +75,7 @@ export default function NewOrderPage() {
     color: "", fabric: "", brand: "", size: "", description: "",
     damageChecklist: DEFAULT_DAMAGE_ITEMS.map((d) => ({ ...d, value: false, note: "" })),
   });
+
   /**
    * Per-garment draft state — preserves the user's in-progress input for each
    * garment tab so switching tabs does not lose unsaved data. The draft is
@@ -588,27 +590,24 @@ export default function NewOrderPage() {
                       <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label className="text-xs">تاریخ تولد (اختیاری)</Label>
-                          <div className="relative">
+                          <div>
                             <Button
                               type="button"
                               variant="outline"
                               className="w-full justify-start"
-                              onClick={() => setShowBirthDatePicker(!showBirthDatePicker)}
+                              onClick={() => setShowBirthDatePicker(true)}
                             >
                               <Calendar className="size-4 ml-2" />
                               {newCustomer.birthDate || "انتخاب تاریخ"}
                             </Button>
-                            {showBirthDatePicker && (
-                              <div className="absolute z-50 mt-1 left-0">
-                                <JalaliDatePicker
-                                  value={newCustomer.birthDate}
-                                  onChange={(v) => {
-                                    setNewCustomer({ ...newCustomer, birthDate: v });
-                                    setShowBirthDatePicker(false);
-                                  }}
-                                />
-                              </div>
-                            )}
+                            <BirthdayPicker
+                              open={showBirthDatePicker}
+                              onOpenChange={setShowBirthDatePicker}
+                              value={newCustomer.birthDate}
+                              onChange={(v) => {
+                                setNewCustomer({ ...newCustomer, birthDate: v });
+                              }}
+                            />
                           </div>
                         </div>
                         <div className="space-y-1">
@@ -1090,7 +1089,7 @@ export default function NewOrderPage() {
             </CardContent>
           </Card>
 
-          {/* Submit */}
+          {/* Submit — main submit button (bottom of cart panel) */}
           <Button
             type="button"
             size="lg"
@@ -1102,26 +1101,6 @@ export default function NewOrderPage() {
           </Button>
         </div>
       </div>
-
-      {/* Sticky bottom bar — live price summary (mobile only) */}
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 px-4 py-3 shadow-lg backdrop-blur-md lg:hidden">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">مبلغ نهایی</p>
-              <p className="text-lg font-bold text-primary">{formatToman(finalPrice)}</p>
-            </div>
-            <Button
-              type="button"
-              size="lg"
-              disabled={createMutation.isPending || !selectedCustomer}
-              onClick={handleSubmit}
-            >
-              {createMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "ثبت سفارش"}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
