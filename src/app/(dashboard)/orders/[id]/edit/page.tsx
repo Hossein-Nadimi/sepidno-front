@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
   ArrowRight, Loader2, Plus, Trash2, Search, Calendar, Zap,
-  ShoppingCart, ChevronLeft, Settings2, UserPlus, Wallet,
+  ShoppingCart, ChevronLeft, Settings2, UserPlus, Wallet, CheckCircle2,
 } from "lucide-react";
 import { orderService, customerService, catalogService, pricingService, settingsService, customGarmentService, type CombinedGarmentType } from "@/services";
 import type { GarmentType, ServiceType, Customer } from "@/types";
@@ -23,6 +23,8 @@ import { PageHeader } from "@/components/common/page-header";
 import { JalaliDatePicker } from "@/components/common/jalali-date-picker";
 import { PriceInput } from "@/components/common/price-input";
 import { CatalogIcon } from "@/components/common/catalog-icon";
+import { SearchInput } from "@/components/common/search-input";
+import { HelpTip } from "@/components/common/help-tip";
 import { useDebounced } from "@/hooks/use-debounced";
 import { formatToman, toPersianDigits, cn } from "@/lib/utils";
 import { toJalali } from "@/lib/jalali";
@@ -62,6 +64,8 @@ export default function EditOrderPage() {
 
   // State
   const [activeGarment, setActiveGarment] = useState<string>("");
+  const [garmentSearch, setGarmentSearch] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -85,6 +89,7 @@ export default function EditOrderPage() {
   const [notes, setNotes] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [useCashback, setUseCashback] = useState(false);
+  const [isPaidAtRegistration, setIsPaidAtRegistration] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   // Queries
@@ -152,6 +157,7 @@ export default function EditOrderPage() {
       setDiscount(orderData.discount || 0);
       setNotes(orderData.notes || "");
       setUrgent(orderData.urgent || false);
+      setIsPaidAtRegistration((orderData as { isPaidAtRegistration?: boolean }).isPaidAtRegistration || false);
 
       // Build cart from order items
       const items: CartItem[] = (orderData.items || []).map((item) => {
@@ -358,6 +364,7 @@ export default function EditOrderPage() {
         discount,
         notes,
         urgent,
+        isPaidAtRegistration,
         items: cart.map((item) => ({
           garmentType: item.garmentType,
           quantity: item.quantity,
@@ -460,45 +467,121 @@ export default function EditOrderPage() {
             </CardContent>
           </Card>
 
-          {/* Garment tabs */}
+          {/* Garment selection — category tabs + garment buttons (matches order create page) */}
           <Card>
-            <CardHeader><CardTitle>انتخاب لباس و خدمات (افزودن آیتم جدید)</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {garments?.map((g: CombinedGarmentType) => (
-                  <button
-                    key={g._id}
-                    type="button"
-                    onClick={() => switchGarmentTab(g._id)}
-                    className={cn(
-                      "flex shrink-0 items-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
-                      activeGarment === g._id
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card hover:bg-accent"
-                    )}
-                  >
-                    <CatalogIcon
-                      icon={g.icon}
-                      image={g.image}
-                      size={16}
-                      className={activeGarment === g._id ? "text-primary-foreground" : "text-muted-foreground"}
-                    />
-                    {g.title}
-                    {g.isCustom && <span className="mr-1 text-xs opacity-60">★</span>}
-                  </button>
-                ))}
-              </div>
+            <CardHeader><CardTitle className="text-base">انتخاب لباس و خدمات (افزودن آیتم جدید)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {/* Search bar */}
+              <SearchInput
+                value={garmentSearch}
+                onChange={setGarmentSearch}
+                placeholder="جستجوی نوع لباس..."
+                className="w-full"
+              />
 
-              {activeGarment && (
-                <>
-                  <div className="space-y-2">
-                    <Label>خدمات</Label>
-                    <div className="space-y-2 rounded-lg border p-3">
-                      {services?.map((s: ServiceType) => {
-                        const checked = selectedServices.includes(s._id);
-                        const price = priceMap.get(`${activeGarment}-${s._id}`);
-                        return (
-                          <div key={s._id} className="flex items-center gap-3">
+              {(() => {
+                // Require at least 2 characters before filtering
+                const q = garmentSearch.trim().toLowerCase();
+                const filtered = (garments || []).filter((g: CombinedGarmentType) => {
+                  if (q.length < 2) return true; // show all when < 2 chars
+                  return g.title.toLowerCase().includes(q) || (g.category || "").toLowerCase().includes(q);
+                });
+
+                const grouped = new Map<string, CombinedGarmentType[]>();
+                for (const g of filtered) {
+                  const cat = g.category || "سایر";
+                  if (!grouped.has(cat)) grouped.set(cat, []);
+                  grouped.get(cat)!.push(g);
+                }
+
+                if (grouped.size === 0) return <p className="py-4 text-center text-sm text-muted-foreground">لباسی یافت نشد</p>;
+
+                const isSearching = q.length >= 2;
+                // Sort categories alphabetically (Persian)
+                const cats = Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0], "fa"));
+
+                return (
+                  <>
+                    {/* Category tabs — horizontal row */}
+                    <div className="flex flex-wrap gap-2">
+                      {cats.map(([cat, items]) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            const next = new Set(expandedCategories);
+                            next.clear();
+                            next.add(cat);
+                            setExpandedCategories(next);
+                          }}
+                          className={cn(
+                            "rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors sm:text-sm",
+                            isSearching || expandedCategories.has(cat)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card hover:bg-accent",
+                          )}
+                        >
+                          {cat} <span className="opacity-60">({toPersianDigits(items.length)})</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Garment buttons for active/searched categories */}
+                    {cats.map(([cat, items]) => {
+                      const isOpen = isSearching || expandedCategories.has(cat);
+                      if (!isOpen) return null;
+                      return (
+                        <div key={cat} className="rounded-lg border bg-muted/20 p-3">
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+                              {cat}
+                            </span>
+                            <div className="h-px flex-1 bg-border" />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {items.map((g: CombinedGarmentType) => (
+                              <button
+                                key={g._id}
+                                type="button"
+                                onClick={() => switchGarmentTab(g._id)}
+                                className={cn(
+                                  "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                                  activeGarment === g._id
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-card hover:bg-accent"
+                                )}
+                              >
+                                <CatalogIcon icon={g.icon} image={g.image} size={16} className={activeGarment === g._id ? "text-primary-foreground" : "text-muted-foreground"} />
+                                {g.title}
+                                {g.isCustom && <span className="mr-1 text-xs opacity-60">★</span>}
+                                {g.isPricedPerMeter && (
+                                  <span className={cn("rounded px-1 text-[10px]", activeGarment === g._id ? "bg-primary-foreground/20" : "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400")}>متر</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {activeGarment && (
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                {/* Services for selected garment — 2-column grid (matches order create page) */}
+                <div className="space-y-2">
+                  <Label>خدمات</Label>
+                  <div className="grid grid-cols-1 gap-2 rounded-lg border p-2 sm:grid-cols-2 sm:p-3">
+                    {services?.map((s: ServiceType) => {
+                      const checked = selectedServices.includes(s._id);
+                      const price = priceMap.get(`${activeGarment}-${s._id}`);
+                      return (
+                        <div key={s._id} className="flex flex-col gap-2 rounded-md p-2 hover:bg-accent/50 sm:flex-row sm:items-center sm:gap-2">
+                          <div className="flex items-center gap-2 sm:flex-1">
                             <Checkbox
                               id={`svc-${s._id}`}
                               checked={checked}
@@ -507,36 +590,34 @@ export default function EditOrderPage() {
                               }}
                             />
                             <CatalogIcon icon={s.icon} image={s.image} size={16} className="text-muted-foreground" />
-                            <Label htmlFor={`svc-${s._id}`} className="cursor-pointer text-sm flex-1">
+                            <Label htmlFor={`svc-${s._id}`} className="cursor-pointer text-sm">
                               {s.title}
                             </Label>
-                            {checked && (
-                              <div className="flex items-center gap-2">
-                                {price !== undefined ? (
-                                  <span className="text-sm text-muted-foreground">{formatToman(price)}</span>
-                                ) : (
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    placeholder="قیمت دستی"
-                                    className="h-8 w-28"
-                                    value={manualPrices[s._id] ?? ""}
-                                    onChange={(e) => {
-                                      const v = e.target.value;
-                                      setManualPrices((prev) => ({
-                                        ...prev,
-                                        [s._id]: v === "" ? 0 : Number(v),
-                                      }));
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            )}
                           </div>
-                        );
-                      })}
-                    </div>
+                          {checked && (
+                            <div className="pr-7 sm:pr-0">
+                              {price !== undefined ? (
+                                <span className="text-sm text-muted-foreground">{formatToman(price)}</span>
+                              ) : (
+                                <PriceInput
+                                  placeholder="قیمت دستی"
+                                  className="h-8 w-full sm:w-28"
+                                  value={manualPrices[s._id] ?? 0}
+                                  onChange={(v) => {
+                                    setManualPrices((prev) => ({
+                                      ...prev,
+                                      [s._id]: v,
+                                    }));
+                                  }}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
 
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -651,10 +732,9 @@ export default function EditOrderPage() {
                     <Plus className="size-4 ml-1" />
                     افزودن به سبد
                   </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right: Cart + order info */}
@@ -751,6 +831,19 @@ export default function EditOrderPage() {
                   </div>
                 </div>
                 <Switch checked={urgent} onCheckedChange={setUrgent} />
+              </div>
+
+              {/* Paid at registration — matches order create page */}
+              <div className="flex items-center justify-between rounded-lg border p-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">پرداخت شده هنگام ثبت</p>
+                    <HelpTip content="اگر مشتری هنگام ثبت سفارش مبلغ را نقداً پرداخت کرده است، این گزینه را فعال کنید. در زمان تحویل دیگر از مشتری طلب وجه نخواهد بود." />
+                    <p className="text-xs text-muted-foreground">هزینه سفارش در زمان ثبت تسویه شده</p>
+                  </div>
+                </div>
+                <Switch checked={isPaidAtRegistration} onCheckedChange={setIsPaidAtRegistration} />
               </div>
 
               <div className="space-y-2">

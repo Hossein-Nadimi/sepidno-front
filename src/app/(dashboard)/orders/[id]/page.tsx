@@ -825,6 +825,15 @@ export default function OrderDetailPage() {
                 <span>مبلغ نهایی</span>
                 <span>{formatToman(order.finalPrice)}</span>
               </div>
+              {order.isPaidAtRegistration && (
+                <div className="mt-2 flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="size-4" />
+                    پرداخت‌شده هنگام ثبت
+                  </span>
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400">طلب وجه در تحویل ندارید</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

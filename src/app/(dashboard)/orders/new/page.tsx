@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
   ArrowRight, Loader2, Plus, Trash2, Search, Calendar, Zap,
-  ShoppingCart, ChevronLeft, Settings2, UserPlus, Wallet,
+  ShoppingCart, ChevronLeft, Settings2, UserPlus, Wallet, CheckCircle2,
 } from "lucide-react";
 import { orderService, customerService, catalogService, pricingService, settingsService, customGarmentService, type CombinedGarmentType } from "@/services";
 import type { GarmentType, ServiceType, Customer } from "@/types";
@@ -107,6 +107,7 @@ export default function NewOrderPage() {
   const [notes, setNotes] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [useCashback, setUseCashback] = useState(true);
+  const [isPaidAtRegistration, setIsPaidAtRegistration] = useState(false);
   const debouncedSearch = useDebounced(customerSearch, 400);
 
   // Detect phone-number-like search (digits, +, spaces) to auto-fill mobile field
@@ -235,6 +236,7 @@ export default function NewOrderPage() {
         notes,
         urgent,
         useCashback,
+        isPaidAtRegistration,
         items: cart.map((item) => ({
           garmentType: item.garmentType,
           quantity: item.quantity,
@@ -774,17 +776,14 @@ export default function NewOrderPage() {
                                 {price !== undefined ? (
                                   <span className="text-sm text-muted-foreground">{formatToman(price)}</span>
                                 ) : (
-                                  <Input
-                                    type="number"
-                                    min={0}
+                                  <PriceInput
                                     placeholder="قیمت دستی"
                                     className="h-8 w-full sm:w-28"
-                                    value={manualPrices[s._id] ?? ""}
-                                    onChange={(e) => {
-                                      const v = e.target.value;
+                                    value={manualPrices[s._id] ?? 0}
+                                    onChange={(v) => {
                                       setManualPrices((prev) => ({
                                         ...prev,
-                                        [s._id]: v === "" ? 0 : Number(v),
+                                        [s._id]: v,
                                       }));
                                     }}
                                   />
@@ -1045,6 +1044,19 @@ export default function NewOrderPage() {
                   </div>
                 </div>
                 <Switch checked={urgent} onCheckedChange={setUrgent} />
+              </div>
+
+              {/* Paid at registration */}
+              <div className="flex items-center justify-between rounded-lg border p-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">پرداخت شده هنگام ثبت</p>
+                    <HelpTip content="اگر مشتری هنگام ثبت سفارش مبلغ را نقداً پرداخت کرده است، این گزینه را فعال کنید. در زمان تحویل دیگر از مشتری طلب وجه نخواهد بود." />
+                    <p className="text-xs text-muted-foreground">هزینه سفارش در زمان ثبت تسویه شده</p>
+                  </div>
+                </div>
+                <Switch checked={isPaidAtRegistration} onCheckedChange={setIsPaidAtRegistration} />
               </div>
 
               {/* Notes */}

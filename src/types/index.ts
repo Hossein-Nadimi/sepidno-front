@@ -182,6 +182,8 @@ export interface Order {
   cashbackIssued: boolean;
   cashbackUsed?: number;
   urgent?: boolean;
+  /** True if the customer paid at registration time (no payment due at delivery). */
+  isPaidAtRegistration?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -4,7 +4,7 @@ import { useState, useMemo, Suspense } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, ShoppingBag, Eye, Filter, Zap, Edit2, ChevronRight, ChevronLeft } from "lucide-react";
+import { Plus, ShoppingBag, Eye, Filter, Zap, Edit2, ChevronRight, ChevronLeft, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 import moment from "moment-jalaali";
 import { orderService, catalogService } from "@/services";
@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { TableLoading } from "@/components/common/loading";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useDebounced } from "@/hooks/use-debounced";
 import { Avatar } from "@/components/common/avatar";
 import { formatToman, toPersianDigits, cn } from "@/lib/utils";
@@ -49,6 +50,11 @@ function OrdersPageInner() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<string>(delayedMode ? "deliveryDate" : "-createdAt");
   const [quickDateFilter, setQuickDateFilter] = useState<string>("");
+  // Hide delivered (completed/cancelled) orders by default.
+  // User can uncheck to see them again. This setting is intentionally NOT
+  // persisted — it always defaults to ON so delivered orders don't clutter
+  // the list when a laundry worker opens the page fresh.
+  const [hideDelivered, setHideDelivered] = useState(true);
   const debouncedSearch = useDebounced(search, 400);
 
   const { data: statuses } = useQuery({
@@ -57,7 +63,7 @@ function OrdersPageInner() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["orders", { page, search: debouncedSearch, status, sortBy, delayedMode, deliveryOnParam, quickDateFilter }],
+    queryKey: ["orders", { page, search: debouncedSearch, status, sortBy, delayedMode, deliveryOnParam, quickDateFilter, hideDelivered }],
     queryFn: () =>
       orderService.list({
         page,
@@ -68,6 +74,10 @@ function OrdersPageInner() {
         delayed: delayedMode ? "true" : undefined,
         deliveryOn: deliveryOnParam || undefined,
         preset: quickDateFilter || undefined,
+        // Pass hideDelivered only when the user hasn't picked a specific
+        // status from the dropdown — otherwise the backend would override
+        // the explicit status filter.
+        hideDelivered: status === "all" && hideDelivered ? "true" : undefined,
       } as Record<string, unknown>),
   });
 
@@ -190,8 +200,8 @@ function OrdersPageInner() {
                 <SelectContent>
                   <SelectItem value="-createdAt">جدیدترین</SelectItem>
                   <SelectItem value="createdAt">قدیمی‌ترین</SelectItem>
-                  <SelectItem value="-deliveryDate">نزدیک‌ترین تحویل</SelectItem>
-                  <SelectItem value="deliveryDate">دورترین تحویل</SelectItem>
+                  <SelectItem value="deliveryDate">نزدیک‌ترین تحویل</SelectItem>
+                  <SelectItem value="-deliveryDate">دورترین تحویل</SelectItem>
                   <SelectItem value="-finalPrice">بیشترین مبلغ</SelectItem>
                   <SelectItem value="finalPrice">کمترین مبلغ</SelectItem>
                   <SelectItem value="-urgent">فوری اول</SelectItem>
@@ -221,6 +231,24 @@ function OrdersPageInner() {
                 </Select>
               </div>
             </div>
+
+            {/* Hide delivered orders checkbox — default ON.
+                When ON and no explicit status filter is selected, orders
+                whose status is marked completed/cancelled are excluded
+                from the list. */}
+            <label
+              htmlFor="hide-delivered"
+              className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground"
+              title="سفارشاتی که تحویل داده شده‌اند (وضعیت «تکمیل‌شده» یا «لغو‌شده») را از لیست مخفی کن"
+            >
+              <Checkbox
+                id="hide-delivered"
+                checked={hideDelivered}
+                onCheckedChange={(v) => { setHideDelivered(v === true); setPage(1); }}
+                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              />
+              <span>عدم نمایش سفارشات تحویل داده شده</span>
+            </label>
           </CardContent>
         </Card>
       )}
@@ -274,6 +302,12 @@ function OrdersPageInner() {
                               </span>
                             )}
                             <span className="font-medium" dir="ltr">{o.orderNumber}</span>
+                            {o.isPaidAtRegistration && (
+                              <span className="flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" title="هزینه در زمان ثبت سفارش پرداخت شده">
+                                <CheckCircle2 className="size-3" />
+                                پرداخت‌شده
+                              </span>
+                            )}
                             {isDelayed && (
                               <span className="flex items-center gap-0.5 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/30 dark:text-red-400" title="تاریخ تحویل گذشته است">
                                 تأخیر

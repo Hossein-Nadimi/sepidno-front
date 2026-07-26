@@ -50,7 +50,15 @@ export default function SmsPage() {
     },
   });
 
-  const activePackages = businessPackages?.items?.filter((p: { status: string }) => p.status === "active") || [];
+  const activePackages = (businessPackages?.items?.filter((p: { status: string; expireDate?: string }) => p.status === "active") || [])
+    // Also exclude packages whose expireDate has passed (even if status is
+    // still "active" because the background job hasn't run yet). This makes
+    // our "مجموع اعتبار قابل استفاده" match the Reports page which uses
+    // `expireDate: { $gte: new Date() }` on the backend.
+    .filter((p: { expireDate?: string }) => {
+      if (!p.expireDate) return true;
+      return new Date(p.expireDate) >= new Date();
+    });
   // Use remainingCredits/totalCredits (new field names) with fallback to old names
   const packageRemaining = activePackages.reduce((sum: number, p: { remainingCredits?: number; remainingSms?: number }) =>
     sum + (p.remainingCredits ?? p.remainingSms ?? 0), 0);
