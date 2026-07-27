@@ -10,5 +10,5 @@ export interface IranianHoliday {
   /** Holiday name in Persian. */
   name: string;
   /** Category for coloring/iconography. */
-  category: "friday";
+  category: "national" | "religious" | "revolution" | "friday";
 }
