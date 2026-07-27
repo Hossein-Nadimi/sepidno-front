@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn, toPersianDigits } from "@/lib/utils";
+import { getIranianHolidays, type IranianHoliday } from "@/lib/iranian-holidays";
 
 moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
 
@@ -93,13 +94,28 @@ export function BirthdayPicker({
 
   const daysInMonth = moment.jDaysInMonth(viewYear, viewMonth);
   const firstDay = moment(`${viewYear}/${viewMonth + 1}/1`, "jYYYY/jMM/jDD");
-  const firstWeekday = firstDay.day();
+  // moment.day() returns 0=Sunday, 6=Saturday (Gregorian week).
+  // Our WEEK_DAYS array is in Iranian week order: 0=شنبه(Sat), 1=یکشنبه(Sun), ..., 6=جمعه(Fri).
+  // Convert Gregorian day-of-week → Iranian week position with (day()+1)%7.
+  const firstWeekday = (firstDay.day() + 1) % 7;
+
+  // Iranian weekly holiday — Friday only.
+  // See jalali-date-picker.tsx for details.
+  const holidays = useMemo(
+    () =>
+      getIranianHolidays(viewYear, (jalaliStr) => {
+        const m = moment(jalaliStr, "jYYYY/jMM/jDD", true);
+        return m.isValid() ? (m as never) : null;
+      }),
+    [viewYear],
+  );
 
   const days = useMemo(() => {
     const arr: Array<{
       day: number;
       isFuture: boolean;
       isToday: boolean;
+      holiday?: IranianHoliday;
     } | null> = [];
     for (let i = 0; i < firstWeekday; i++) arr.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
@@ -111,11 +127,12 @@ export function BirthdayPicker({
         day: d,
         isFuture: dayMoment.isAfter(todayMoment, "day"),
         isToday: dayMoment.isSame(todayMoment, "day"),
+        holiday: holidays.get(`${viewMonth + 1}/${d}`),
       });
     }
     return arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewYear, viewMonth, firstWeekday, daysInMonth]);
+  }, [viewYear, viewMonth, firstWeekday, daysInMonth, holidays]);
 
   const years = useMemo(() => {
     const arr: number[] = [];
@@ -310,15 +327,21 @@ export function BirthdayPicker({
                       type="button"
                       disabled={d.isFuture}
                       onClick={() => selectDay(d.day)}
+                      title={d.holiday?.name}
                       className={cn(
-                        "flex h-11 items-center justify-center rounded-md text-sm font-semibold transition-colors sm:h-12 sm:text-base",
+                        "relative flex h-11 items-center justify-center rounded-md text-sm font-semibold transition-colors sm:h-12 sm:text-base",
                         d.isFuture && "cursor-not-allowed text-muted-foreground/30",
                         !d.isFuture && "hover:bg-accent",
                         isSelected(d.day) && "bg-primary text-primary-foreground hover:bg-primary",
                         !isSelected(d.day) && d.isToday && !d.isFuture && "ring-1 ring-primary",
+                        // Holiday — red day number (unless selected)
+                        !isSelected(d.day) && d.holiday && !d.isFuture && "text-red-600 dark:text-red-400",
                       )}
                     >
                       {toPersianDigits(d.day)}
+                      {d.holiday && !isSelected(d.day) && !d.isFuture && (
+                        <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-red-500" />
+                      )}
                     </button>
                   );
                 })}

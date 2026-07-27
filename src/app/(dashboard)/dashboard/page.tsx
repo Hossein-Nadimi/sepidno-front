@@ -40,9 +40,10 @@ import { CountUp } from "@/components/common/count-up";
 import { CardLoading } from "@/components/common/loading";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
-import { formatNumber, formatToman, toPersianDigits } from "@/lib/utils";
+import { useState, useMemo } from "react";
+import { formatNumber, formatToman, toPersianDigits, cn } from "@/lib/utils";
 import { jalaliStringToLongLabel } from "@/lib/jalali";
+import { getIranianHolidays } from "@/lib/iranian-holidays";
 import { SuperAdminDashboard } from "@/features/dashboard/super-admin-dashboard";
 
 moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
@@ -78,6 +79,18 @@ export default function DashboardPage() {
       })
       .slice(0, 7);
   })();
+
+  // Iranian weekly holiday — Friday only.
+  // Used to mark Fridays in the 7-day upcoming calendar widget.
+  const currentJalaliYear = moment().jYear();
+  const holidays = useMemo(
+    () =>
+      getIranianHolidays(currentJalaliYear, (jalaliStr) => {
+        const m = moment(jalaliStr, "jYYYY/jMM/jDD", true);
+        return m.isValid() ? (m as never) : null;
+      }),
+    [currentJalaliYear],
+  );
 
   if (isLoading) {
     return (
@@ -235,11 +248,17 @@ export default function DashboardPage() {
               {upcomingDays.map((day) => {
                 const maxDaily = calendarData?.summary.maxDailyOrders ?? 0;
                 const longLabel = jalaliStringToLongLabel(day.jalaliDate);
+                // Lookup holiday for this day
+                const dayParts = day.jalaliDate.split("/");
+                const monthNum = parseInt(dayParts[1], 10);
+                const dayNum = parseInt(dayParts[2], 10);
+                const holiday = holidays.get(`${monthNum}/${dayNum}`);
                 return (
                   <Link
                     key={day.jalaliDate}
                     href="/orders-calendar"
-                    className={[
+                    title={holiday?.name}
+                    className={cn(
                       "flex flex-col gap-1.5 rounded-lg border p-3 transition hover:scale-[1.01] hover:shadow-md",
                       day.isToday
                         ? "border-emerald-500 ring-1 ring-emerald-500/30"
@@ -249,13 +268,27 @@ export default function DashboardPage() {
                         : day.orderCount > 0
                           ? "bg-emerald-50 dark:bg-emerald-950/20"
                           : "bg-card",
-                    ].join(" ")}
+                      // Holiday border highlight
+                      holiday && "border-red-300 dark:border-red-900",
+                    )}
                   >
-                    {/* Row 1: weekday + day + month name (full) */}
+                    {/* Row 1: weekday + day + month name (full) — red if holiday */}
                     <div className="flex items-center gap-1.5 text-sm font-bold">
                       {day.isFull && <AlertTriangle className="size-3.5 text-red-500" />}
-                      <span className={day.isFull ? "text-red-700 dark:text-red-400" : ""}>{longLabel}</span>
+                      <span className={cn(
+                        day.isFull && "text-red-700 dark:text-red-400",
+                        holiday && !day.isFull && "text-red-600 dark:text-red-400",
+                      )}>
+                        {longLabel}
+                      </span>
                     </div>
+
+                    {/* Holiday name (if any) */}
+                    {holiday && (
+                      <div className="text-[10px] leading-tight text-red-600 dark:text-red-400 truncate">
+                        {holiday.name}
+                      </div>
+                    )}
 
                     {/* Row 2: order count / max daily */}
                     <div className="flex items-center gap-1.5 text-sm">

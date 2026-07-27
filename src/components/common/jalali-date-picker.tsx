@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, AlertCircle, ChevronDown } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { cn, toPersianDigits } from "@/lib/utils";
 import { calendarService } from "@/services";
+import { getIranianHolidays, type IranianHoliday } from "@/lib/iranian-holidays";
 
 moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
 
@@ -76,7 +77,14 @@ export function JalaliDatePicker({
 
   const daysInMonth = moment.jDaysInMonth(viewYear, viewMonth);
   const firstDay = moment(`${viewYear}/${viewMonth + 1}/1`, "jYYYY/jMM/jDD");
-  const firstWeekday = firstDay.day();
+  // moment.day() returns 0=Sunday, 6=Saturday (Gregorian week).
+  // Our WEEK_DAYS array is in Iranian week order: 0=شنبه(Sat), 1=یکشنبه(Sun), ..., 6=جمعه(Fri).
+  // Convert Gregorian day-of-week → Iranian week position with (day()+1)%7.
+  //   Sat (6) → 0  ← first column
+  //   Sun (0) → 1
+  //   ...
+  //   Fri (5) → 6  ← last column
+  const firstWeekday = (firstDay.day() + 1) % 7;
 
   // Fetch calendar data for the visible month to show order counts per day
   const jalaliMonth = `${viewYear}/${String(viewMonth + 1).padStart(2, "0")}`;
@@ -106,6 +114,18 @@ export function JalaliDatePicker({
 
   const maxDaily = calendarData?.summary.maxDailyOrders ?? 0;
 
+  // Iranian weekly holiday — Friday only.
+  // (Other holidays removed because the persian-holidays package had
+  // incorrect entries and lunar Hijri conversion has ±1 day drift.)
+  const holidays = useMemo(
+    () =>
+      getIranianHolidays(viewYear, (jalaliStr) => {
+        const m = moment(jalaliStr, "jYYYY/jMM/jDD", true);
+        return m.isValid() ? (m as never) : null;
+      }),
+    [viewYear],
+  );
+
   const days = useMemo(() => {
     const arr: Array<{
       day: number;
@@ -115,6 +135,7 @@ export function JalaliDatePicker({
       orderCount: number;
       isFull: boolean;
       urgentCount: number;
+      holiday?: IranianHoliday;
     } | null> = [];
     for (let i = 0; i < firstWeekday; i++) arr.push(null);
     const today = moment();
@@ -124,6 +145,8 @@ export function JalaliDatePicker({
       const isToday = dayMoment.isSame(today, "day");
       const jalaliDate = dayMoment.format("jYYYY/jMM/jDD");
       const info = dayMap.get(jalaliDate);
+      // Lookup holiday for this day (1-based month/day for the key)
+      const holiday = holidays.get(`${viewMonth + 1}/${d}`);
       arr.push({
         day: d,
         disabled,
@@ -132,10 +155,11 @@ export function JalaliDatePicker({
         orderCount: info?.orderCount ?? 0,
         isFull: info?.isFull ?? false,
         urgentCount: info?.urgentCount ?? 0,
+        holiday,
       });
     }
     return arr;
-  }, [viewYear, viewMonth, firstWeekday, daysInMonth, minMoment, dayMap]);
+  }, [viewYear, viewMonth, firstWeekday, daysInMonth, minMoment, dayMap, holidays]);
 
   // 4×3 grid of years for the year-picker mode (12 years per page)
   const yearGrid = useMemo(() => {
@@ -321,9 +345,11 @@ export function JalaliDatePicker({
                   disabled={d.disabled}
                   onClick={() => selectDay(d.day)}
                   title={
-                    showOrderCounts && d.orderCount > 0
-                      ? `${toPersianDigits(d.orderCount)} سفارش${maxDaily > 0 ? ` / ${toPersianDigits(maxDaily)}` : ""}`
-                      : undefined
+                    d.holiday
+                      ? d.holiday.name
+                      : showOrderCounts && d.orderCount > 0
+                        ? `${toPersianDigits(d.orderCount)} سفارش${maxDaily > 0 ? ` / ${toPersianDigits(maxDaily)}` : ""}`
+                        : undefined
                   }
                   className={cn(
                     "relative flex h-9 flex-col items-center justify-start gap-0.5 rounded-md pt-1 text-sm font-semibold transition-colors sm:h-16 sm:pt-2 sm:text-base",
@@ -332,6 +358,8 @@ export function JalaliDatePicker({
                     isSelected(d.day) && "bg-primary text-primary-foreground hover:bg-primary",
                     !isSelected(d.day) && d.isToday && "ring-1 ring-primary",
                     !isSelected(d.day) && d.isFull && !d.disabled && "bg-red-50 dark:bg-red-950/30",
+                    // Holiday styling — show the day number in red (except when selected)
+                    !isSelected(d.day) && d.holiday && !d.disabled && "text-red-600 dark:text-red-400",
                   )}
                 >
                   <span>{toPersianDigits(d.day)}</span>
@@ -349,6 +377,10 @@ export function JalaliDatePicker({
                   )}
                   {d.isFull && !d.disabled && (
                     <AlertCircle className="absolute right-0.5 top-0.5 size-2.5 text-red-500 sm:right-1 sm:top-1 sm:size-3" />
+                  )}
+                  {/* Holiday dot indicator — small red dot below the day number */}
+                  {d.holiday && !isSelected(d.day) && !d.disabled && (
+                    <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-red-500" />
                   )}
                 </button>
               );
@@ -432,6 +464,16 @@ export function JalaliDatePicker({
         <div className="mt-2 flex items-center gap-1.5 border-t pt-2 text-xs text-muted-foreground">
           <span className="inline-block size-2.5 rounded bg-red-100 dark:bg-red-950/40" />
           روزهای پر (به حداکثر رسیده)
+        </div>
+      )}
+
+      {/* Holiday legend — always shown in days mode */}
+      {pickerMode === "days" && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="font-bold text-red-600 dark:text-red-400">●</span>
+            روزهای تعطیل رسمی
+          </span>
         </div>
       )}
     </div>

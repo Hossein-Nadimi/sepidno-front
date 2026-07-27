@@ -19,8 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toPersianDigits, formatToman } from "@/lib/utils";
+import { toPersianDigits, formatToman, cn } from "@/lib/utils";
 import { jalaliStringToLongLabel, JALALI_WEEKDAYS, JALALI_MONTHS } from "@/lib/jalali";
+import { getIranianHolidays } from "@/lib/iranian-holidays";
 
 moment.loadPersian({ dialect: "persian-modern", usePersianDigits: false });
 
@@ -51,6 +52,18 @@ export default function OrdersCalendarPage() {
     queryFn: () => calendarService.getMonth(month),
     enabled: !!month,
   });
+
+  // Iranian weekly holiday — Friday only.
+  // See jalali-date-picker.tsx for details.
+  const { jy: viewYear } = splitJalaliMonth(month);
+  const holidays = useMemo(
+    () =>
+      getIranianHolidays(viewYear, (jalaliStr) => {
+        const m = moment(jalaliStr, "jYYYY/jMM/jDD", true);
+        return m.isValid() ? (m as never) : null;
+      }),
+    [viewYear],
+  );
 
   // Build the calendar grid.
   // Backend returns 42 days (6 weeks starting from Saturday). We mark days
@@ -183,27 +196,41 @@ export default function OrdersCalendarPage() {
                     />
                   );
                 }
+                // Lookup holiday for this day
+                const dayNum = parseInt(day.jalaliDate.split("/")[2], 10);
+                const monthNum = parseInt(day.jalaliDate.split("/")[1], 10);
+                const holiday = holidays.get(`${monthNum}/${dayNum}`);
                 return (
                   <button
                     key={idx}
                     onClick={() => router.push(`/orders?deliveryOn=${encodeURIComponent(day.jalaliDate)}`)}
-                    className={[
+                    title={holiday?.name}
+                    className={cn(
                       "relative aspect-square min-h-14 rounded-md border p-1 text-right transition hover:scale-[1.02] hover:shadow-md sm:min-h-24 sm:p-2",
                       day.isToday
                         ? "border-emerald-500 ring-1 ring-emerald-500/30"
                         : "border-border",
-                      day.isPast ? "opacity-60" : "",
+                      day.isPast && "opacity-60",
                       day.isFull
                         ? "bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/30"
                         : day.orderCount > 0
                           ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
                           : "bg-card hover:bg-muted/50",
-                    ].join(" ")}
+                    )}
                   >
                     <div className="flex h-full flex-col">
-                      <span className="text-xs font-bold sm:text-base">
-                        {toPersianDigits(parseInt(day.jalaliDate.split("/")[2], 10))}
+                      <span className={cn(
+                        "text-xs font-bold sm:text-base",
+                        holiday && "text-red-600 dark:text-red-400",
+                      )}>
+                        {toPersianDigits(dayNum)}
                       </span>
+                      {/* Holiday name — show on sm+ screens for context */}
+                      {holiday && (
+                        <div className="hidden text-[9px] leading-tight text-red-600 dark:text-red-400 sm:block truncate">
+                          {holiday.name}
+                        </div>
+                      )}
                       {day.orderCount > 0 && (
                         <div className="mt-auto space-y-0.5">
                           <div className="flex items-center gap-0.5 text-[10px] font-semibold sm:gap-1 sm:text-sm">
@@ -228,6 +255,10 @@ export default function OrdersCalendarPage() {
                           <AlertCircle className="size-2.5 text-red-500 sm:size-4" />
                         </div>
                       )}
+                      {/* Holiday dot indicator on mobile (name hidden on small screens) */}
+                      {holiday && (
+                        <span className="absolute bottom-0.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-red-500 sm:hidden" />
+                      )}
                     </div>
                   </button>
                 );
@@ -248,6 +279,10 @@ export default function OrdersCalendarPage() {
             <div className="flex items-center gap-1.5">
               <div className="size-3 rounded ring-1 ring-emerald-500" />
               امروز
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-red-600 dark:text-red-400">●</span>
+              روزهای تعطیل رسمی
             </div>
           </div>
 
