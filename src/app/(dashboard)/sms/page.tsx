@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Package, MessageSquare, ShoppingCart, Loader2, CheckCircle2, Clock, CreditCard, Info } from "lucide-react";
+import { Package, MessageSquare, ShoppingCart, Loader2, CheckCircle2, Clock, CreditCard, Info, Phone } from "lucide-react";
 import toast from "react-hot-toast";
 import { smsService } from "@/services";
 import api from "@/lib/api";
@@ -37,6 +37,14 @@ export default function SmsPage() {
     queryKey: ["subscription-status"],
     queryFn: () => api.get("/laundry/subscriptions/status").then((r) => r.data.data),
   });
+
+  // Payment config — determines whether to show "buy" button or "تماس بگیرید"
+  const { data: paymentConfig } = useQuery({
+    queryKey: ["payment-config"],
+    queryFn: () => api.get("/laundry/payment-config").then((r) => r.data.data as { paymentEnabled: boolean; contactPhone: string }),
+  });
+  const paymentEnabled = paymentConfig?.paymentEnabled ?? false;
+  const contactPhone = paymentConfig?.contactPhone ?? "09391503092";
 
   const purchaseMutation = useMutation({
     mutationFn: (pkgId: string) =>
@@ -169,20 +177,35 @@ export default function SmsPage() {
                         {pkg.expireDays > 0 && (
                           <p className="mt-1 text-xs text-muted-foreground">اعتبار: {toPersianDigits(pkg.expireDays)} روز</p>
                         )}
-                        <Button
-                          className="mt-4 w-full"
-                          onClick={() => purchaseMutation.mutate(pkg._id)}
-                          disabled={purchaseMutation.isPending}
-                        >
-                          {purchaseMutation.isPending && purchaseMutation.variables === pkg._id ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <>
-                              <ShoppingCart className="size-4 ml-1" />
-                              خرید
-                            </>
-                          )}
-                        </Button>
+                        {paymentEnabled ? (
+                          <Button
+                            className="mt-4 w-full"
+                            onClick={() => purchaseMutation.mutate(pkg._id)}
+                            disabled={purchaseMutation.isPending}
+                          >
+                            {purchaseMutation.isPending && purchaseMutation.variables === pkg._id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <>
+                                <ShoppingCart className="size-4 ml-1" />
+                                خرید
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          // Payment disabled → show contact phone
+                          <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                            <p className="text-sm font-medium text-foreground">برای خرید تماس بگیرید</p>
+                            <a
+                              href={`tel:${contactPhone}`}
+                              className="mt-1 flex items-center justify-center gap-1.5 text-base font-bold text-primary hover:underline"
+                              dir="ltr"
+                            >
+                              <Phone className="size-4" />
+                              {toPersianDigits(contactPhone)}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

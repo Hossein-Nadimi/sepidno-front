@@ -196,13 +196,13 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>لوگو</Label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                   {businessForm.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={resolveMediaUrl(businessForm.logo)}
                       alt="لوگو"
-                      className="size-16 rounded-lg object-cover border"
+                      className="size-16 shrink-0 rounded-lg object-cover border"
                       onError={(e) => {
                         console.error("Logo failed to load:", businessForm.logo);
                         (e.currentTarget as HTMLImageElement).style.opacity = "0.3";
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="flex size-16 items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground">
+                    <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground">
                       <ImageIcon className="size-6" />
                     </div>
                   )}
@@ -238,15 +238,17 @@ export default function SettingsPage() {
                         }
                       }}
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
-                      <Upload className="size-4 ml-1" />
-                      آپلود لوگو
-                    </Button>
-                    {businessForm.logo && (
-                      <Button type="button" variant="ghost" size="sm" className="mr-2" onClick={() => setBusinessForm({ ...businessForm, logo: "" })}>
-                        حذف
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
+                        <Upload className="size-4 ml-1" />
+                        آپلود لوگو
                       </Button>
-                    )}
+                      {businessForm.logo && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setBusinessForm({ ...businessForm, logo: "" })}>
+                          حذف
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -302,13 +304,13 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader><CardTitle>ساعات کاری</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2">
               {workingHours.map((wh, idx) => (
                 <div
                   key={idx}
                   className="flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:gap-3 sm:border-0 sm:p-0"
                 >
-                  <div className="flex items-center justify-between gap-2 sm:w-20 sm:shrink-0">
+                  <div className="flex items-center justify-between gap-2 sm:w-24 sm:shrink-0">
                     <span className="text-sm font-medium">{DAYS[wh.day]}</span>
                     {/* On mobile, put the switch here so it doesn't overflow */}
                     <div className="flex items-center gap-1.5 sm:hidden">
@@ -324,7 +326,7 @@ export default function SettingsPage() {
                       type="time"
                       value={wh.open}
                       onChange={(e) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, open: e.target.value } : w))}
-                      className="w-full sm:w-32"
+                      className="w-full sm:w-28"
                       disabled={wh.closed}
                     />
                     <span className="text-muted-foreground shrink-0">تا</span>
@@ -332,7 +334,7 @@ export default function SettingsPage() {
                       type="time"
                       value={wh.close}
                       onChange={(e) => setWorkingHours(workingHours.map((w, i) => i === idx ? { ...w, close: e.target.value } : w))}
-                      className="w-full sm:w-32"
+                      className="w-full sm:w-28"
                       disabled={wh.closed}
                     />
                   </div>

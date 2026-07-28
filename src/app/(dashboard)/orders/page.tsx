@@ -275,14 +275,14 @@ function OrdersPageInner() {
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>شماره سفارش</TableHead>
-                    <TableHead>مشتری</TableHead>
-                    <TableHead>تاریخ تحویل</TableHead>
-                    <TableHead className="text-center">آیتم‌ها</TableHead>
-                    <TableHead className="text-center">مبلغ</TableHead>
-                    <TableHead className="text-center">وضعیت</TableHead>
-                    <TableHead className="text-left">عملیات</TableHead>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="font-bold">شماره سفارش</TableHead>
+                    <TableHead className="font-bold">مشتری</TableHead>
+                    <TableHead className="font-bold">تاریخ تحویل</TableHead>
+                    <TableHead className="text-center font-bold">آیتم‌ها</TableHead>
+                    <TableHead className="text-center font-bold">مبلغ</TableHead>
+                    <TableHead className="text-center font-bold">وضعیت</TableHead>
+                    <TableHead className="text-left font-bold">عملیات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -292,24 +292,31 @@ function OrdersPageInner() {
                     const currentStatusId = typeof o.status === "object" ? (o.status as { _id: string })._id : o.status;
                     const isDelayed = delayedMode || (o.deliveryDate && new Date(o.deliveryDate) < new Date() && !statusObj?.isCompleted && !statusObj?.isCancelled);
                     return (
-                      <TableRow key={o._id} className={o.urgent ? "bg-amber-50/50 dark:bg-amber-950/10" : ""}>
+                      <TableRow
+                        key={o._id}
+                        className={cn(
+                          "border-b border-border/60 transition-colors hover:bg-accent/40",
+                          o.urgent && "bg-amber-50/40 dark:bg-amber-950/10",
+                          isDelayed && !o.urgent && "bg-red-50/30 dark:bg-red-950/5",
+                        )}
+                      >
                         <TableCell label="شماره سفارش">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-bold tracking-wide" dir="ltr">{o.orderNumber}</span>
                             {o.urgent && (
-                              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                                <Zap className="size-3" />
+                              <span className="flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Zap className="size-2.5" />
                                 فوری
                               </span>
                             )}
-                            <span className="font-medium" dir="ltr">{o.orderNumber}</span>
                             {o.isPaidAtRegistration && (
-                              <span className="flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" title="هزینه در زمان ثبت سفارش پرداخت شده">
-                                <CheckCircle2 className="size-3" />
+                              <span className="flex items-center gap-0.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white" title="هزینه در زمان ثبت سفارش پرداخت شده">
+                                <CheckCircle2 className="size-2.5" />
                                 پرداخت‌شده
                               </span>
                             )}
                             {isDelayed && (
-                              <span className="flex items-center gap-0.5 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/30 dark:text-red-400" title="تاریخ تحویل گذشته است">
+                              <span className="flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white" title="تاریخ تحویل گذشته است">
                                 تأخیر
                               </span>
                             )}
@@ -319,12 +326,15 @@ function OrdersPageInner() {
                           {customer ? (
                             <div className="flex items-center gap-2">
                               <Avatar name={`${customer.firstName} ${customer.lastName}`} size={32} />
-                              <span className="truncate">{customer.firstName} {customer.lastName}</span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{customer.firstName} {customer.lastName}</p>
+                                <p className="truncate text-xs text-muted-foreground" dir="ltr">{customer.mobile}</p>
+                              </div>
                             </div>
                           ) : "—"}
                         </TableCell>
-                        <TableCell label="تاریخ تحویل" className="text-sm text-muted-foreground">
-                          <div>{toJalali(o.deliveryDate)}</div>
+                        <TableCell label="تاریخ تحویل" className="text-sm">
+                          <div className="font-medium text-foreground">{toJalali(o.deliveryDate)}</div>
                           {(() => {
                             if (!o.deliveryDate || statusObj?.isCompleted || statusObj?.isCancelled) return null;
                             const now = new Date();
@@ -333,15 +343,21 @@ function OrdersPageInner() {
                             delivery.setHours(0, 0, 0, 0);
                             const diffMs = delivery.getTime() - now.getTime();
                             const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-                            if (diffDays === 0) return <span className="text-xs font-medium text-blue-600 dark:text-blue-400">امروز</span>;
-                            if (diffDays === 1) return <span className="text-xs font-medium text-blue-600 dark:text-blue-400">۱ روز تا تحویل</span>;
-                            if (diffDays > 1 && diffDays <= 3) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{toPersianDigits(diffDays)} روز تا تحویل</span>;
-                            if (diffDays < 0) return <span className="text-xs font-medium text-red-600 dark:text-red-400">{toPersianDigits(Math.abs(diffDays))} روز تأخیر</span>;
+                            if (diffDays === 0) return <span className="mt-0.5 inline-block rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">امروز</span>;
+                            if (diffDays === 1) return <span className="mt-0.5 inline-block rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">۱ روز تا تحویل</span>;
+                            if (diffDays > 1 && diffDays <= 3) return <span className="mt-0.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">{toPersianDigits(diffDays)} روز تا تحویل</span>;
+                            if (diffDays < 0) return <span className="mt-0.5 inline-block rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950/40 dark:text-red-400">{toPersianDigits(Math.abs(diffDays))} روز تأخیر</span>;
                             return null;
                           })()}
                         </TableCell>
-                        <TableCell label="آیتم‌ها" className="text-center">{toPersianDigits(o.items.length)}</TableCell>
-                        <TableCell label="مبلغ" className="text-center font-medium">{formatToman(o.finalPrice)}</TableCell>
+                        <TableCell label="آیتم‌ها" className="text-center">
+                          <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                            {toPersianDigits(o.items.length)}
+                          </span>
+                        </TableCell>
+                        <TableCell label="مبلغ" className="text-center">
+                          <span className="font-bold text-foreground">{formatToman(o.finalPrice)}</span>
+                        </TableCell>
                         <TableCell label="وضعیت" className="text-center">
                           <Select
                             value={currentStatusId}
@@ -355,14 +371,14 @@ function OrdersPageInner() {
                             }}
                           >
                             <SelectTrigger className={cn(
-                              "h-8 w-32 mx-auto border-2 font-medium",
+                              "h-8 w-32 mx-auto border-2 font-bold text-xs",
                               statusObj?.isCompleted
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-400"
+                                ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                                 : statusObj?.isCancelled
-                                  ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
+                                  ? "border-red-400 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950/30 dark:text-red-400"
                                   : statusObj?.title === "آماده تحویل" || statusObj?.slug === "ready"
-                                    ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-400"
-                                    : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400"
+                                    ? "border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+                                    : "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
                             )}>
                               <SelectValue />
                             </SelectTrigger>
@@ -375,13 +391,11 @@ function OrdersPageInner() {
                         </TableCell>
                         <TableCell label="عملیات">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950/20" onClick={() => router.push(`/orders/${o._id}`)}>
-                              <Eye className="size-3.5 ml-1" />
-                              مشاهده
+                            <Button variant="ghost" size="icon" className="size-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/20" title="مشاهده" onClick={() => router.push(`/orders/${o._id}`)}>
+                              <Eye className="size-4" />
                             </Button>
-                            <Button variant="outline" size="sm" className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-900 dark:text-emerald-400 dark:hover:bg-emerald-950/20" onClick={() => router.push(`/orders/${o._id}/edit`)}>
-                              <Edit2 className="size-3.5 ml-1" />
-                              ویرایش
+                            <Button variant="ghost" size="icon" className="size-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/20" title="ویرایش" onClick={() => router.push(`/orders/${o._id}/edit`)}>
+                              <Edit2 className="size-4" />
                             </Button>
                           </div>
                         </TableCell>

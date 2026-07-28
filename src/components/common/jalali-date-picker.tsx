@@ -378,10 +378,10 @@ export function JalaliDatePicker({
                   {d.isFull && !d.disabled && (
                     <AlertCircle className="absolute right-0.5 top-0.5 size-2.5 text-red-500 sm:right-1 sm:top-1 sm:size-3" />
                   )}
-                  {/* Holiday dot indicator — small red dot below the day number */}
-                  {d.holiday && !isSelected(d.day) && !d.disabled && (
-                    <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-red-500" />
-                  )}
+                  {/* Note: No red dot for holidays — the red day number is
+                      enough to indicate a holiday. Adding a dot here would
+                      overlap with the order count (e.g. "1/20") at the
+                      bottom of the cell, making it unreadable. */}
                 </button>
               );
             })}

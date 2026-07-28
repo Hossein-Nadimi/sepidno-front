@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CreditCard, MessageSquare, Calendar, Loader2, CheckCircle2, Crown } from "lucide-react";
+import { CreditCard, MessageSquare, Calendar, Loader2, CheckCircle2, Crown, Phone } from "lucide-react";
 import toast from "react-hot-toast";
 import { subscriptionService, smsService } from "@/services";
 import api from "@/lib/api";
@@ -43,6 +43,14 @@ export default function SubscriptionPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<Record<string, Period>>({});
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
+
+  // Payment config — determines whether to show "buy" button or "تماس بگیرید"
+  const { data: paymentConfig } = useQuery({
+    queryKey: ["payment-config"],
+    queryFn: () => api.get("/laundry/payment-config").then((r) => r.data.data as { paymentEnabled: boolean; contactPhone: string }),
+  });
+  const paymentEnabled = paymentConfig?.paymentEnabled ?? false;
+  const contactPhone = paymentConfig?.contactPhone ?? "09391503092";
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -286,23 +294,47 @@ export default function SubscriptionPage() {
                       ))}
                     </ul>
 
-                    <Button
-                      className="mt-6 w-full"
-                      disabled={hasActiveSub || isComingSoon || trialMutation.isPending || paymentMutation.isPending}
-                      onClick={() => handlePlanClick(p._id, p.monthlyPrice)}
-                    >
-                      {isComingSoon ? (
-                        "به‌زودی"
-                      ) : trialMutation.isPending || paymentMutation.isPending ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : hasActiveSub ? (
-                        "اشتراک فعال است"
-                      ) : p.monthlyPrice === 0 ? (
-                        "فعال‌سازی رایگان"
-                      ) : (
-                        "خرید اشتراک"
-                      )}
-                    </Button>
+                    {/* Buy button — or "تماس بگیرید" when payment is disabled */}
+                    {isComingSoon ? (
+                      <Button className="mt-6 w-full" disabled>
+                        به‌زودی
+                      </Button>
+                    ) : hasActiveSub ? (
+                      <Button className="mt-6 w-full" disabled>
+                        اشتراک فعال است
+                      </Button>
+                    ) : p.monthlyPrice === 0 ? (
+                      // Free plan — always allow activation (no payment needed)
+                      <Button
+                        className="mt-6 w-full"
+                        disabled={trialMutation.isPending}
+                        onClick={() => handlePlanClick(p._id, p.monthlyPrice)}
+                      >
+                        {trialMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "فعال‌سازی رایگان"}
+                      </Button>
+                    ) : !paymentEnabled ? (
+                      // Paid plan + payment disabled → show contact phone
+                      <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                        <p className="text-sm font-medium text-foreground">برای خرید تماس بگیرید</p>
+                        <a
+                          href={`tel:${contactPhone}`}
+                          className="mt-1 flex items-center justify-center gap-1.5 text-lg font-bold text-primary hover:underline"
+                          dir="ltr"
+                        >
+                          <Phone className="size-4" />
+                          {toPersianDigits(contactPhone)}
+                        </a>
+                      </div>
+                    ) : (
+                      // Paid plan + payment enabled → normal buy button
+                      <Button
+                        className="mt-6 w-full"
+                        disabled={paymentMutation.isPending}
+                        onClick={() => handlePlanClick(p._id, p.monthlyPrice)}
+                      >
+                        {paymentMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "خرید اشتراک"}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );

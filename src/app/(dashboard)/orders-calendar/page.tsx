@@ -181,7 +181,7 @@ export default function OrdersCalendarPage() {
           {isLoading ? (
             <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
               {Array.from({ length: 42 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-square min-h-14 rounded-md sm:min-h-24" />
+                <Skeleton key={i} className="h-16 rounded-md sm:h-28" />
               ))}
             </div>
           ) : (
@@ -192,7 +192,7 @@ export default function OrdersCalendarPage() {
                   return (
                     <div
                       key={idx}
-                      className="aspect-square min-h-14 rounded-md border border-dashed border-border/50 bg-muted/20 sm:min-h-24"
+                      className="h-16 rounded-md border border-dashed border-border/50 bg-muted/20 sm:h-28"
                     />
                   );
                 }
@@ -206,7 +206,7 @@ export default function OrdersCalendarPage() {
                     onClick={() => router.push(`/orders?deliveryOn=${encodeURIComponent(day.jalaliDate)}`)}
                     title={holiday?.name}
                     className={cn(
-                      "relative aspect-square min-h-14 rounded-md border p-1 text-right transition hover:scale-[1.02] hover:shadow-md sm:min-h-24 sm:p-2",
+                      "relative flex h-16 flex-col overflow-hidden rounded-md border p-1 text-right transition hover:shadow-md sm:h-28 sm:p-2",
                       day.isToday
                         ? "border-emerald-500 ring-1 ring-emerald-500/30"
                         : "border-border",
@@ -218,48 +218,44 @@ export default function OrdersCalendarPage() {
                           : "bg-card hover:bg-muted/50",
                     )}
                   >
-                    <div className="flex h-full flex-col">
+                    {/* Day number row */}
+                    <div className="flex items-start justify-between">
                       <span className={cn(
                         "text-xs font-bold sm:text-base",
                         holiday && "text-red-600 dark:text-red-400",
                       )}>
                         {toPersianDigits(dayNum)}
                       </span>
-                      {/* Holiday name — show on sm+ screens for context */}
-                      {holiday && (
-                        <div className="hidden text-[9px] leading-tight text-red-600 dark:text-red-400 sm:block truncate">
-                          {holiday.name}
-                        </div>
-                      )}
-                      {day.orderCount > 0 && (
-                        <div className="mt-auto space-y-0.5">
-                          <div className="flex items-center gap-0.5 text-[10px] font-semibold sm:gap-1 sm:text-sm">
-                            <CalendarDays className="hidden size-3 sm:inline" />
-                            <span>{toPersianDigits(day.orderCount)}</span>
-                            {day.urgentCount > 0 && (
-                              <span className="flex items-center text-amber-600 dark:text-amber-400">
-                                <Zap className="size-2.5 sm:size-3" />
-                                <span className="hidden sm:inline">{toPersianDigits(day.urgentCount)}</span>
-                              </span>
-                            )}
-                          </div>
-                          {day.totalRevenue > 0 && (
-                            <div className="hidden text-[11px] text-muted-foreground truncate sm:block">
-                              {formatToman(day.totalRevenue)}
-                            </div>
-                          )}
-                        </div>
-                      )}
                       {day.isFull && (
-                        <div className="absolute top-0.5 left-0.5 sm:top-1 sm:left-1">
-                          <AlertCircle className="size-2.5 text-red-500 sm:size-4" />
-                        </div>
-                      )}
-                      {/* Holiday dot indicator on mobile (name hidden on small screens) */}
-                      {holiday && (
-                        <span className="absolute bottom-0.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-red-500 sm:hidden" />
+                        <AlertCircle className="size-2.5 shrink-0 text-red-500 sm:size-4" />
                       )}
                     </div>
+                    {/* Holiday name — show on sm+ screens for context */}
+                    {holiday && (
+                      <div className="hidden text-[9px] leading-tight text-red-600 dark:text-red-400 sm:block truncate">
+                        {holiday.name}
+                      </div>
+                    )}
+                    {/* Order count — pushed to bottom */}
+                    {day.orderCount > 0 && (
+                      <div className="mt-auto space-y-0.5">
+                        <div className="flex items-center gap-0.5 text-[10px] font-semibold sm:gap-1 sm:text-sm">
+                          <CalendarDays className="hidden size-3 sm:inline" />
+                          <span>{toPersianDigits(day.orderCount)}</span>
+                          {day.urgentCount > 0 && (
+                            <span className="flex items-center text-amber-600 dark:text-amber-400">
+                              <Zap className="size-2.5 sm:size-3" />
+                              <span className="hidden sm:inline">{toPersianDigits(day.urgentCount)}</span>
+                            </span>
+                          )}
+                        </div>
+                        {day.totalRevenue > 0 && (
+                          <div className="hidden text-[11px] text-muted-foreground truncate sm:block">
+                            {formatToman(day.totalRevenue)}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </button>
                 );
               })}
