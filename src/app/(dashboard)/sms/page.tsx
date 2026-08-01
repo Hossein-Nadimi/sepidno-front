@@ -1,7 +1,17 @@
 "use client";
 
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Package, MessageSquare, ShoppingCart, Loader2, CheckCircle2, Clock, CreditCard, Info, Phone } from "lucide-react";
+import {
+  Package,
+  MessageSquare,
+  ShoppingCart,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  Info,
+  Phone,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { smsService } from "@/services";
 import api from "@/lib/api";
@@ -9,7 +19,14 @@ import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { StatCard } from "@/components/common/stat-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableLoading } from "@/components/common/loading";
@@ -35,20 +52,31 @@ export default function SmsPage() {
 
   const { data: subStatus } = useQuery({
     queryKey: ["subscription-status"],
-    queryFn: () => api.get("/laundry/subscriptions/status").then((r) => r.data.data),
+    queryFn: () =>
+      api.get("/laundry/subscriptions/status").then((r) => r.data.data),
   });
 
   // Payment config — determines whether to show "buy" button or "تماس بگیرید"
   const { data: paymentConfig } = useQuery({
     queryKey: ["payment-config"],
-    queryFn: () => api.get("/laundry/payment-config").then((r) => r.data.data as { paymentEnabled: boolean; contactPhone: string }),
+    queryFn: () =>
+      api
+        .get("/laundry/payment-config")
+        .then(
+          (r) =>
+            r.data.data as { paymentEnabled: boolean; contactPhone: string }
+        ),
   });
   const paymentEnabled = paymentConfig?.paymentEnabled ?? false;
-  const contactPhone = paymentConfig?.contactPhone ?? "09391503092";
+  const contactPhone = paymentConfig?.contactPhone ?? "09146140026";
 
   const purchaseMutation = useMutation({
     mutationFn: (pkgId: string) =>
-      api.post("/laundry/sms/business-packages/payment/request", { smsPackageId: pkgId }).then((r) => r.data.data),
+      api
+        .post("/laundry/sms/business-packages/payment/request", {
+          smsPackageId: pkgId,
+        })
+        .then((r) => r.data.data),
     onSuccess: (data: { redirectUrl: string }) => {
       window.location.href = data.redirectUrl;
     },
@@ -58,7 +86,11 @@ export default function SmsPage() {
     },
   });
 
-  const activePackages = (businessPackages?.items?.filter((p: { status: string; expireDate?: string }) => p.status === "active") || [])
+  const activePackages = (
+    businessPackages?.items?.filter(
+      (p: { status: string; expireDate?: string }) => p.status === "active"
+    ) || []
+  )
     // Also exclude packages whose expireDate has passed (even if status is
     // still "active" because the background job hasn't run yet). This makes
     // our "مجموع اعتبار قابل استفاده" match the Reports page which uses
@@ -68,21 +100,35 @@ export default function SmsPage() {
       return new Date(p.expireDate) >= new Date();
     });
   // Use remainingCredits/totalCredits (new field names) with fallback to old names
-  const packageRemaining = activePackages.reduce((sum: number, p: { remainingCredits?: number; remainingSms?: number }) =>
-    sum + (p.remainingCredits ?? p.remainingSms ?? 0), 0);
-  const packageTotal = activePackages.reduce((sum: number, p: { totalCredits?: number; totalSms?: number }) =>
-    sum + (p.totalCredits ?? p.totalSms ?? 0), 0);
+  const packageRemaining = activePackages.reduce(
+    (sum: number, p: { remainingCredits?: number; remainingSms?: number }) =>
+      sum + (p.remainingCredits ?? p.remainingSms ?? 0),
+    0
+  );
+  const packageTotal = activePackages.reduce(
+    (sum: number, p: { totalCredits?: number; totalSms?: number }) =>
+      sum + (p.totalCredits ?? p.totalSms ?? 0),
+    0
+  );
 
   // Subscription SMS — use new field names with fallback
-  const sub: { smsCredits?: number; smsCreditsUsed?: number; monthlySmsQuota?: number; monthlySmsUsed?: number } =
-    subStatus?.subscription || {};
+  const sub: {
+    smsCredits?: number;
+    smsCreditsUsed?: number;
+    monthlySmsQuota?: number;
+    monthlySmsUsed?: number;
+  } = subStatus?.subscription || {};
   const subCredits = sub.smsCredits ?? sub.monthlySmsQuota ?? 0;
   const subUsed = sub.smsCreditsUsed ?? sub.monthlySmsUsed ?? 0;
   const subRemaining = Math.max(0, subCredits - subUsed);
 
   const totalAvailable = subRemaining + packageRemaining;
-  const sentCount = usageData?.items?.filter((u: { status: string }) => u.status === "sent").length || 0;
-  const failedCount = usageData?.items?.filter((u: { status: string }) => u.status === "failed").length || 0;
+  const sentCount =
+    usageData?.items?.filter((u: { status: string }) => u.status === "sent")
+      .length || 0;
+  const failedCount =
+    usageData?.items?.filter((u: { status: string }) => u.status === "failed")
+      .length || 0;
 
   return (
     <div className="space-y-6">
@@ -118,7 +164,9 @@ export default function SmsPage() {
       <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
         <Info className="size-5 text-primary shrink-0 mt-0.5" />
         <div className="text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">هر پیامک بر اساس طول متن محاسبه می‌شود.</p>
+          <p className="font-medium text-foreground">
+            هر پیامک بر اساس طول متن محاسبه می‌شود.
+          </p>
         </div>
       </div>
 
@@ -128,7 +176,9 @@ export default function SmsPage() {
           title="مجموع اعتبار قابل استفاده"
           value={formatNumber(totalAvailable)}
           icon={<MessageSquare className="size-5" />}
-          description={`اشتراک: ${formatNumber(subRemaining)} + بسته‌ها: ${formatNumber(packageRemaining)}`}
+          description={`اشتراک: ${formatNumber(
+            subRemaining
+          )} + بسته‌ها: ${formatNumber(packageRemaining)}`}
           className="border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20"
         />
         <StatCard
@@ -145,8 +195,16 @@ export default function SmsPage() {
         />
         <StatCard
           title="ارسال اخیر"
-          value={`${formatNumber(sentCount)} موفق / ${formatNumber(failedCount)} ناموفق`}
-          icon={failedCount > 0 ? <Clock className="size-5" /> : <CheckCircle2 className="size-5" />}
+          value={`${formatNumber(sentCount)} موفق / ${formatNumber(
+            failedCount
+          )} ناموفق`}
+          icon={
+            failedCount > 0 ? (
+              <Clock className="size-5" />
+            ) : (
+              <CheckCircle2 className="size-5" />
+            )
+          }
           className={failedCount > 0 ? "border-amber-200" : ""}
         />
       </div>
@@ -160,57 +218,84 @@ export default function SmsPage() {
           {pkgLoading ? (
             <TableLoading />
           ) : !packages?.items?.length ? (
-            <EmptyState icon={Package} title="بسته‌ای برای خرید در دسترس نیست" />
+            <EmptyState
+              icon={Package}
+              title="بسته‌ای برای خرید در دسترس نیست"
+            />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {packages.items.map((pkg: { _id: string; title: string; description?: string; creditCount: number; price: number; expireDays: number }) => {
-                const credits = pkg.creditCount ?? 0;
-                return (
-                  <Card key={pkg._id}>
-                    <CardContent className="p-6">
-                      <div className="text-center">
-                        <h3 className="font-bold">{pkg.title}</h3>
-                        {pkg.description && <p className="mt-1 text-sm text-muted-foreground">{pkg.description}</p>}
-                        <p className="mt-3 text-3xl font-bold text-primary">{toPersianDigits(credits)}</p>
-                        <p className="text-sm text-muted-foreground">اعتبار پیامک</p>
-                        <p className="mt-2 text-lg font-medium">{formatToman(pkg.price)}</p>
-                        {pkg.expireDays > 0 && (
-                          <p className="mt-1 text-xs text-muted-foreground">اعتبار: {toPersianDigits(pkg.expireDays)} روز</p>
-                        )}
-                        {paymentEnabled ? (
-                          <Button
-                            className="mt-4 w-full"
-                            onClick={() => purchaseMutation.mutate(pkg._id)}
-                            disabled={purchaseMutation.isPending}
-                          >
-                            {purchaseMutation.isPending && purchaseMutation.variables === pkg._id ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <>
-                                <ShoppingCart className="size-4 ml-1" />
-                                خرید
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          // Payment disabled → show contact phone
-                          <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
-                            <p className="text-sm font-medium text-foreground">برای خرید تماس بگیرید</p>
-                            <a
-                              href={`tel:${contactPhone}`}
-                              className="mt-1 flex items-center justify-center gap-1.5 text-base font-bold text-primary hover:underline"
-                              dir="ltr"
+              {packages.items.map(
+                (pkg: {
+                  _id: string;
+                  title: string;
+                  description?: string;
+                  creditCount: number;
+                  price: number;
+                  expireDays: number;
+                }) => {
+                  const credits = pkg.creditCount ?? 0;
+                  return (
+                    <Card key={pkg._id}>
+                      <CardContent className="p-6">
+                        <div className="text-center">
+                          <h3 className="font-bold">{pkg.title}</h3>
+                          {pkg.description && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {pkg.description}
+                            </p>
+                          )}
+                          <p className="mt-3 text-3xl font-bold text-primary">
+                            {toPersianDigits(credits)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            اعتبار پیامک
+                          </p>
+                          <p className="mt-2 text-lg font-medium">
+                            {formatToman(pkg.price)}
+                          </p>
+                          {pkg.expireDays > 0 && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              اعتبار: {toPersianDigits(pkg.expireDays)} روز
+                            </p>
+                          )}
+                          {paymentEnabled ? (
+                            <Button
+                              className="mt-4 w-full"
+                              onClick={() => purchaseMutation.mutate(pkg._id)}
+                              disabled={purchaseMutation.isPending}
                             >
-                              <Phone className="size-4" />
-                              {toPersianDigits(contactPhone)}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                              {purchaseMutation.isPending &&
+                              purchaseMutation.variables === pkg._id ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <ShoppingCart className="size-4 ml-1" />
+                                  خرید
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            // Payment disabled → show contact phone
+                            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                              <p className="text-sm font-medium text-foreground">
+                                برای خرید تماس بگیرید
+                              </p>
+                              <a
+                                href={`tel:${contactPhone}`}
+                                className="mt-1 flex items-center justify-center gap-1.5 text-base font-bold text-primary hover:underline"
+                                dir="ltr"
+                              >
+                                <Phone className="size-4" />
+                                {toPersianDigits(contactPhone)}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+              )}
             </div>
           )}
         </CardContent>
@@ -237,25 +322,68 @@ export default function SmsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {businessPackages.items.map((pkg: { _id: string; smsPackage: { title?: string } | string; totalCredits?: number; totalSms?: number; remainingCredits?: number; remainingSms?: number; createdAt: string; expireDate: string; status: string }) => {
-                  const smsPkg = typeof pkg.smsPackage === "object" ? pkg.smsPackage : null;
-                  const total = pkg.totalCredits ?? pkg.totalSms ?? 0;
-                  const remaining = pkg.remainingCredits ?? pkg.remainingSms ?? 0;
-                  return (
-                    <TableRow key={pkg._id}>
-                      <TableCell label="بسته" className="font-medium">{smsPkg?.title || "—"}</TableCell>
-                      <TableCell label="کل اعتبار" className="text-center">{toPersianDigits(total)}</TableCell>
-                      <TableCell label="باقی‌مانده" className="text-center font-medium">{toPersianDigits(remaining)}</TableCell>
-                      <TableCell label="تاریخ خرید" className="text-sm text-muted-foreground">{toJalali(pkg.createdAt)}</TableCell>
-                      <TableCell label="تاریخ انقضا" className="text-sm text-muted-foreground">{toJalali(pkg.expireDate)}</TableCell>
-                      <TableCell label="وضعیت" className="text-center">
-                        <Badge variant={pkg.status === "active" ? "default" : "secondary"}>
-                          {pkg.status === "active" ? "فعال" : pkg.status === "expired" ? "منقضی" : "مصرف شده"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {businessPackages.items.map(
+                  (pkg: {
+                    _id: string;
+                    smsPackage: { title?: string } | string;
+                    totalCredits?: number;
+                    totalSms?: number;
+                    remainingCredits?: number;
+                    remainingSms?: number;
+                    createdAt: string;
+                    expireDate: string;
+                    status: string;
+                  }) => {
+                    const smsPkg =
+                      typeof pkg.smsPackage === "object"
+                        ? pkg.smsPackage
+                        : null;
+                    const total = pkg.totalCredits ?? pkg.totalSms ?? 0;
+                    const remaining =
+                      pkg.remainingCredits ?? pkg.remainingSms ?? 0;
+                    return (
+                      <TableRow key={pkg._id}>
+                        <TableCell label="بسته" className="font-medium">
+                          {smsPkg?.title || "—"}
+                        </TableCell>
+                        <TableCell label="کل اعتبار" className="text-center">
+                          {toPersianDigits(total)}
+                        </TableCell>
+                        <TableCell
+                          label="باقی‌مانده"
+                          className="text-center font-medium"
+                        >
+                          {toPersianDigits(remaining)}
+                        </TableCell>
+                        <TableCell
+                          label="تاریخ خرید"
+                          className="text-sm text-muted-foreground"
+                        >
+                          {toJalali(pkg.createdAt)}
+                        </TableCell>
+                        <TableCell
+                          label="تاریخ انقضا"
+                          className="text-sm text-muted-foreground"
+                        >
+                          {toJalali(pkg.expireDate)}
+                        </TableCell>
+                        <TableCell label="وضعیت" className="text-center">
+                          <Badge
+                            variant={
+                              pkg.status === "active" ? "default" : "secondary"
+                            }
+                          >
+                            {pkg.status === "active"
+                              ? "فعال"
+                              : pkg.status === "expired"
+                              ? "منقضی"
+                              : "مصرف شده"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                )}
               </TableBody>
             </Table>
           )}
@@ -284,27 +412,71 @@ export default function SmsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {usageData.items.map((u: { _id: string; phone: string; messageText?: string; message?: string; characterCount?: number; creditCost?: number; partsCount?: number; source?: string; createdAt: string; status: string; event?: string }) => (
-                  <TableRow key={u._id}>
-                    <TableCell label="شماره" dir="ltr" className="text-sm">{u.phone}</TableCell>
-                    <TableCell label="متن پیام" className="max-w-xs">
-                      <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">
-                        {u.messageText || u.message || "—"}
-                      </p>
-                    </TableCell>
-                    <TableCell label="کاراکتر" className="text-center text-sm">{toPersianDigits(u.characterCount || 0)}</TableCell>
-                    <TableCell label="اعتبار" className="text-center font-medium">{toPersianDigits(u.creditCost ?? u.partsCount ?? 0)}</TableCell>
-                    <TableCell label="منبع" className="text-center text-xs text-muted-foreground">
-                      {u.source === "subscription" ? "اشتراک" : u.source === "package" ? "بسته" : u.source === "admin" ? "سیستم" : "—"}
-                    </TableCell>
-                    <TableCell label="تاریخ" className="text-sm text-muted-foreground">{toJalaliDateTime(u.createdAt)}</TableCell>
-                    <TableCell label="وضعیت" className="text-center">
-                      <Badge variant={u.status === "sent" ? "default" : "destructive"}>
-                        {u.status === "sent" ? "موفق" : "ناموفق"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {usageData.items.map(
+                  (u: {
+                    _id: string;
+                    phone: string;
+                    messageText?: string;
+                    message?: string;
+                    characterCount?: number;
+                    creditCost?: number;
+                    partsCount?: number;
+                    source?: string;
+                    createdAt: string;
+                    status: string;
+                    event?: string;
+                  }) => (
+                    <TableRow key={u._id}>
+                      <TableCell label="شماره" dir="ltr" className="text-sm">
+                        {u.phone}
+                      </TableCell>
+                      <TableCell label="متن پیام" className="max-w-xs">
+                        <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">
+                          {u.messageText || u.message || "—"}
+                        </p>
+                      </TableCell>
+                      <TableCell
+                        label="کاراکتر"
+                        className="text-center text-sm"
+                      >
+                        {toPersianDigits(u.characterCount || 0)}
+                      </TableCell>
+                      <TableCell
+                        label="اعتبار"
+                        className="text-center font-medium"
+                      >
+                        {toPersianDigits(u.creditCost ?? u.partsCount ?? 0)}
+                      </TableCell>
+                      <TableCell
+                        label="منبع"
+                        className="text-center text-xs text-muted-foreground"
+                      >
+                        {u.source === "subscription"
+                          ? "اشتراک"
+                          : u.source === "package"
+                          ? "بسته"
+                          : u.source === "admin"
+                          ? "سیستم"
+                          : "—"}
+                      </TableCell>
+                      <TableCell
+                        label="تاریخ"
+                        className="text-sm text-muted-foreground"
+                      >
+                        {toJalaliDateTime(u.createdAt)}
+                      </TableCell>
+                      <TableCell label="وضعیت" className="text-center">
+                        <Badge
+                          variant={
+                            u.status === "sent" ? "default" : "destructive"
+                          }
+                        >
+                          {u.status === "sent" ? "موفق" : "ناموفق"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  )
+                )}
               </TableBody>
             </Table>
           )}

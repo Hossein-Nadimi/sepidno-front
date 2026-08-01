@@ -44,9 +44,15 @@ export default function ContactPage() {
     <section className="py-20">
       <div className="container mx-auto px-4 max-w-5xl">
         <div className="text-center">
-          <Badge variant="secondary" className="mb-4">تماس با ما</Badge>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">با ما در ارتباط باشید</h1>
-          <p className="mt-4 text-lg text-muted-foreground">سوال یا پیشنهاد دارید؟ خوشحال می‌شویم بشنویم.</p>
+          <Badge variant="secondary" className="mb-4">
+            تماس با ما
+          </Badge>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+            با ما در ارتباط باشید
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground">
+            سوال یا پیشنهاد دارید؟ خوشحال می‌شویم بشنویم.
+          </p>
         </div>
 
         <div className="mt-12 grid gap-8 lg:grid-cols-2">
@@ -57,27 +63,47 @@ export default function ContactPage() {
                 <div className="space-y-2">
                   <Label htmlFor="name">نام و نام خانوادگی</Label>
                   <Input id="name" {...register("name")} />
-                  {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                  {errors.name && (
+                    <p className="text-xs text-destructive">
+                      {errors.name.message}
+                    </p>
+                  )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="email">ایمیل</Label>
                     <Input id="email" dir="ltr" {...register("email")} />
-                    {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                    {errors.email && (
+                      <p className="text-xs text-destructive">
+                        {errors.email.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">شماره تماس</Label>
                     <Input id="phone" dir="ltr" {...register("phone")} />
-                    {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+                    {errors.phone && (
+                      <p className="text-xs text-destructive">
+                        {errors.phone.message}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="message">پیام شما</Label>
                   <Textarea id="message" rows={5} {...register("message")} />
-                  {errors.message && <p className="text-xs text-destructive">{errors.message.message}</p>}
+                  {errors.message && (
+                    <p className="text-xs text-destructive">
+                      {errors.message.message}
+                    </p>
+                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? <Loader2 className="size-4 animate-spin" /> : "ارسال پیام"}
+                  {loading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "ارسال پیام"
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -93,7 +119,9 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">تلفن تماس</p>
-                    <p dir="ltr" className="mt-1 text-sm text-muted-foreground">09391503092</p>
+                    <p dir="ltr" className="mt-1 text-sm text-muted-foreground">
+                      09146140026
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -102,7 +130,9 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">ایمیل</p>
-                    <p dir="ltr" className="mt-1 text-sm text-muted-foreground">info@sepidno.ir</p>
+                    <p dir="ltr" className="mt-1 text-sm text-muted-foreground">
+                      info@sepidno.ir
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -111,7 +141,9 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">آدرس</p>
-                    <p className="mt-1 text-sm text-muted-foreground">تبریز، ایران</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      تبریز، ایران
+                    </p>
                   </div>
                 </div>
               </CardContent>
