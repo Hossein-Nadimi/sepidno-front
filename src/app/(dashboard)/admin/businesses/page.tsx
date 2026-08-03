@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Plus, Search, Power, Ban, CheckCircle2, Loader2, Save, BarChart3 } from "lucide-react";
+import { Building2, Plus, Search, Power, Ban, CheckCircle2, Loader2, Save, BarChart3, MessageSquare, ShoppingBag, Calendar } from "lucide-react";
 import { adminService, type AdminBusiness } from "@/services";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,8 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useDebounced } from "@/hooks/use-debounced";
 import toast from "react-hot-toast";
-import { toJalaliDateTime } from "@/lib/jalali";
+import { toJalaliDateTime, toJalali } from "@/lib/jalali";
+import { formatNumber, toPersianDigits, cn } from "@/lib/utils";
 import { BusinessDetailDialog } from "./business-detail-dialog";
 
 interface CreateForm {
@@ -227,25 +228,27 @@ export default function AdminBusinessesPage() {
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>نام بیزینس</TableHead>
-                    <TableHead>مالک</TableHead>
-                    <TableHead>دسته</TableHead>
-                    <TableHead>تاریخ ثبت</TableHead>
-                    <TableHead className="text-center">وضعیت</TableHead>
-                    <TableHead className="text-left">عملیات</TableHead>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="font-bold">نام بیزینس</TableHead>
+                    <TableHead className="font-bold">مالک</TableHead>
+                    <TableHead className="font-bold">اشتراک</TableHead>
+                    <TableHead className="text-center font-bold">سفارشات</TableHead>
+                    <TableHead className="text-center font-bold">پیامک ارسالی</TableHead>
+                    <TableHead className="text-center font-bold">اعتبار پیامک</TableHead>
+                    <TableHead className="text-center font-bold">وضعیت</TableHead>
+                    <TableHead className="text-left font-bold">عملیات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {businesses.map((b: AdminBusiness) => (
-                    <TableRow key={b._id}>
+                    <TableRow key={b._id} className="hover:bg-accent/40 transition-colors">
                       <TableCell label="نام بیزینس">
                         <div className="flex items-center gap-2">
-                          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
                             <Building2 className="size-4" />
                           </div>
-                          <div>
-                            <p className="font-medium">{b.name}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{b.name}</p>
                             <p className="text-xs text-muted-foreground" dir="ltr">{b.slug}</p>
                           </div>
                         </div>
@@ -258,8 +261,45 @@ export default function AdminBusinessesPage() {
                           </div>
                         ) : "—"}
                       </TableCell>
-                      <TableCell label="دسته" className="text-sm">{b.category?.name || "—"}</TableCell>
-                      <TableCell label="تاریخ ثبت" className="text-sm text-muted-foreground">{toJalaliDateTime(b.createdAt)}</TableCell>
+                      <TableCell label="اشتراک">
+                        {b.subscription ? (
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-medium">{b.subscription.planName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              انقضا: {toJalali(b.subscription.expireDate)}
+                            </p>
+                          </div>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">بدون اشتراک</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell label="سفارشات" className="text-center">
+                        <span className="inline-flex items-center gap-1 text-sm font-medium">
+                          <ShoppingBag className="size-3.5 text-muted-foreground" />
+                          {toPersianDigits(b.orderCount || 0)}
+                        </span>
+                      </TableCell>
+                      <TableCell label="پیامک ارسالی" className="text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-sm font-medium">{toPersianDigits(b.smsSent || 0)}</span>
+                          {(b.smsFailed || 0) > 0 && (
+                            <span className="text-[10px] text-red-500">{toPersianDigits(b.smsFailed || 0)} ناموفق</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell label="اعتبار پیامک" className="text-center">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold",
+                          (b.smsRemaining || 0) === 0
+                            ? "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                            : (b.smsRemaining || 0) <= 5
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                        )}>
+                          <MessageSquare className="size-3" />
+                          {toPersianDigits(b.smsRemaining || 0)}
+                        </span>
+                      </TableCell>
                       <TableCell label="وضعیت" className="text-center">{statusBadge(b.status)}</TableCell>
                       <TableCell label="عملیات">
                         <div className="flex items-center justify-end gap-1">

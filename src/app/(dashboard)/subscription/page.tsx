@@ -2,15 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  CreditCard,
-  MessageSquare,
-  Calendar,
-  Loader2,
-  CheckCircle2,
-  Crown,
-  Phone,
-} from "lucide-react";
+import { CreditCard, MessageSquare, Calendar, Loader2, CheckCircle2, Crown, Phone } from "lucide-react";
 import toast from "react-hot-toast";
 import { subscriptionService, smsService } from "@/services";
 import api from "@/lib/api";
@@ -19,14 +11,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatCard } from "@/components/common/stat-card";
 import { TableLoading } from "@/components/common/loading";
 import { EmptyState } from "@/components/common/empty-state";
@@ -55,25 +40,17 @@ export default function SubscriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<Record<string, Period>>(
-    {}
-  );
+  const [selectedPeriod, setSelectedPeriod] = useState<Record<string, Period>>({});
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
 
   // Payment config — determines whether to show "buy" button or "تماس بگیرید"
   const { data: paymentConfig } = useQuery({
     queryKey: ["payment-config"],
-    queryFn: () =>
-      api
-        .get("/laundry/payment-config")
-        .then(
-          (r) =>
-            r.data.data as { paymentEnabled: boolean; contactPhone: string }
-        ),
+    queryFn: () => api.get("/laundry/payment-config").then((r) => r.data.data as { paymentEnabled: boolean; contactPhone: string }),
   });
   const paymentEnabled = paymentConfig?.paymentEnabled ?? false;
-  const contactPhone = paymentConfig?.contactPhone ?? "09146140026";
+  const contactPhone = paymentConfig?.contactPhone ?? "09391503092";
 
   useEffect(() => {
     const status = searchParams.get("status");
@@ -81,24 +58,20 @@ export default function SubscriptionPage() {
       toast.success("پرداخت با موفقیت انجام شد. اشتراک شما فعال شد.");
       setStatusMsg("success");
       // Re-fetch user to get updated role/permissions, then redirect
-      api
-        .get("/auth/me")
-        .then((meRes) => {
-          useAuthStore.getState().setUser(meRes.data.data);
-          // Now check if business setup is needed
-          return api.get("/laundry/subscriptions/status");
-        })
-        .then((res) => {
-          const data = res.data.data;
-          if (data.needsBusinessSetup) {
-            router.replace("/setup-business");
-          } else {
-            router.replace("/dashboard");
-          }
-        })
-        .catch(() => {
+      api.get("/auth/me").then((meRes) => {
+        useAuthStore.getState().setUser(meRes.data.data);
+        // Now check if business setup is needed
+        return api.get("/laundry/subscriptions/status");
+      }).then((res) => {
+        const data = res.data.data;
+        if (data.needsBusinessSetup) {
+          router.replace("/setup-business");
+        } else {
           router.replace("/dashboard");
-        });
+        }
+      }).catch(() => {
+        router.replace("/dashboard");
+      });
     } else if (status === "failed") {
       toast.error("پرداخت ناموفق بود. لطفاً دوباره تلاش کنید.");
       setStatusMsg("failed");
@@ -108,14 +81,12 @@ export default function SubscriptionPage() {
 
   const { data: subStatus, isLoading: statusLoading } = useQuery({
     queryKey: ["subscription-status"],
-    queryFn: () =>
-      api.get("/laundry/subscriptions/status").then((r) => r.data.data),
+    queryFn: () => api.get("/laundry/subscriptions/status").then((r) => r.data.data),
   });
 
   const { data: plans } = useQuery({
     queryKey: ["subscription-plans"],
-    queryFn: () =>
-      subscriptionService.plans.list({ pageSize: 10, isActive: true }),
+    queryFn: () => subscriptionService.plans.list({ pageSize: 10, isActive: true }),
   });
 
   const { data: subHistory } = useQuery({
@@ -143,9 +114,7 @@ export default function SubscriptionPage() {
 
   const paymentMutation = useMutation({
     mutationFn: ({ planId, period }: { planId: string; period: Period }) =>
-      api
-        .post("/laundry/subscriptions/payment/request", { planId, period })
-        .then((r) => r.data.data),
+      api.post("/laundry/subscriptions/payment/request", { planId, period }).then((r) => r.data.data),
     onSuccess: (data: { redirectUrl: string }) => {
       window.location.href = data.redirectUrl;
     },
@@ -160,19 +129,7 @@ export default function SubscriptionPage() {
     }
   }
 
-  function getPlanPrice(
-    plan: {
-      monthlyPrice: number;
-      quarterlyPrice?: number;
-      semiAnnualPrice?: number;
-      annualPrice?: number;
-      monthlyOriginalPrice?: number;
-      quarterlyOriginalPrice?: number;
-      semiAnnualOriginalPrice?: number;
-      annualOriginalPrice?: number;
-    },
-    period: Period
-  ): { price: number; original: number } {
+  function getPlanPrice(plan: { monthlyPrice: number; quarterlyPrice?: number; semiAnnualPrice?: number; annualPrice?: number; monthlyOriginalPrice?: number; quarterlyOriginalPrice?: number; semiAnnualOriginalPrice?: number; annualOriginalPrice?: number }, period: Period): { price: number; original: number } {
     const priceMap: Record<Period, number> = {
       monthly: plan.monthlyPrice || 0,
       quarterly: plan.quarterlyPrice || (plan.monthlyPrice || 0) * 3,
@@ -195,9 +152,7 @@ export default function SubscriptionPage() {
       <PageHeader title="اشتراک" description="مدیریت اشتراک خشکشویی" />
 
       {/* Status card */}
-      <Card
-        className={hasActiveSub ? "border-emerald-500" : "border-amber-500"}
-      >
+      <Card className={hasActiveSub ? "border-emerald-500" : "border-amber-500"}>
         <CardContent className="flex items-center gap-4 p-6">
           {hasActiveSub ? (
             <>
@@ -207,10 +162,7 @@ export default function SubscriptionPage() {
               <div>
                 <h3 className="font-semibold text-emerald-700">اشتراک فعال</h3>
                 <p className="text-sm text-muted-foreground">
-                  تاریخ انقضا:{" "}
-                  {subStatus?.subscription
-                    ? toJalali(subStatus.subscription.expireDate)
-                    : "—"}
+                  تاریخ انقضا: {subStatus?.subscription ? toJalali(subStatus.subscription.expireDate) : "—"}
                 </p>
               </div>
             </>
@@ -220,12 +172,9 @@ export default function SubscriptionPage() {
                 <Calendar className="size-6" />
               </div>
               <div>
-                <h3 className="font-semibold text-amber-700">
-                  اشتراک فعال نیست
-                </h3>
+                <h3 className="font-semibold text-amber-700">اشتراک فعال نیست</h3>
                 <p className="text-sm text-muted-foreground">
-                  برای استفاده از خدمات سپیدنو، یکی از طرح‌های زیر را انتخاب
-                  کنید.
+                  برای استفاده از خدمات سپیدنو، یکی از طرح‌های زیر را انتخاب کنید.
                 </p>
               </div>
             </>
@@ -238,41 +187,17 @@ export default function SubscriptionPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="پیامک باقی‌مانده"
-            value={formatNumber(
-              subStatus?.subscription?.smsCredits
-                ? Math.max(
-                    0,
-                    subStatus.subscription.smsCredits -
-                      (subStatus.subscription.smsCreditsUsed || 0)
-                  )
-                : subStatus?.subscription?.monthlySmsQuota
-                ? Math.max(
-                    0,
-                    subStatus.subscription.monthlySmsQuota -
-                      (subStatus.subscription.monthlySmsUsed || 0)
-                  )
-                : 0
-            )}
+            value={formatNumber(subStatus?.subscription?.smsCredits ? Math.max(0, subStatus.subscription.smsCredits - (subStatus.subscription.smsCreditsUsed || 0)) : subStatus?.subscription?.monthlySmsQuota ? Math.max(0, subStatus.subscription.monthlySmsQuota - (subStatus.subscription.monthlySmsUsed || 0)) : 0)}
             icon={<MessageSquare className="size-5" />}
           />
           <StatCard
             title="تاریخ انقضا"
-            value={
-              subStatus?.subscription
-                ? toJalali(subStatus.subscription.expireDate)
-                : "—"
-            }
+            value={subStatus?.subscription ? toJalali(subStatus.subscription.expireDate) : "—"}
             icon={<Calendar className="size-5" />}
           />
           <StatCard
             title="پلن فعال"
-            value={
-              subStatus?.subscription?.subscriptionPlan
-                ? typeof subStatus.subscription.subscriptionPlan === "object"
-                  ? subStatus.subscription.subscriptionPlan.name
-                  : "—"
-                : "—"
-            }
+            value={subStatus?.subscription?.subscriptionPlan ? (typeof subStatus.subscription.subscriptionPlan === "object" ? subStatus.subscription.subscriptionPlan.name : "—") : "—"}
             icon={<CreditCard className="size-5" />}
           />
         </div>
@@ -291,61 +216,30 @@ export default function SubscriptionPage() {
               const isComingSoon = p.isComingSoon;
               const period = selectedPeriod[p._id] || "monthly";
               const priceInfo = getPlanPrice(p, period);
-              const isHighlight =
-                p.tagline === "محبوب‌ترین" || p.name === "پایه";
-              const discountPercent =
-                priceInfo.original > 0 && priceInfo.original !== priceInfo.price
-                  ? Math.round((1 - priceInfo.price / priceInfo.original) * 100)
-                  : 0;
+              const isHighlight = p.tagline === "محبوب‌ترین" || p.name === "پایه";
+              const discountPercent = priceInfo.original > 0 && priceInfo.original !== priceInfo.price
+                ? Math.round((1 - priceInfo.price / priceInfo.original) * 100)
+                : 0;
 
               return (
-                <Card
-                  key={p._id}
-                  className={
-                    isHighlight
-                      ? "border-primary shadow-lg"
-                      : isComingSoon
-                      ? "opacity-75"
-                      : ""
-                  }
-                >
+                <Card key={p._id} className={isHighlight ? "border-primary shadow-lg" : isComingSoon ? "opacity-75" : ""}>
                   <CardContent className="p-6">
                     {p.tagline && (
-                      <Badge
-                        className={`mb-4 w-full justify-center ${
-                          isComingSoon ? "bg-amber-500" : ""
-                        }`}
-                      >
+                      <Badge className={`mb-4 w-full justify-center ${isComingSoon ? "bg-amber-500" : ""}`}>
                         {p.tagline}
                       </Badge>
                     )}
                     <h3 className="text-lg font-bold">{p.name}</h3>
-                    {p.description && (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {p.description}
-                      </p>
-                    )}
+                    {p.description && <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>}
 
                     {/* Period selector */}
                     {p.monthlyPrice > 0 && !isComingSoon && (
                       <div className="mt-4 flex flex-wrap gap-1">
-                        {(
-                          [
-                            "monthly",
-                            "quarterly",
-                            "semiAnnual",
-                            "annual",
-                          ] as Period[]
-                        ).map((per) => (
+                        {(["monthly", "quarterly", "semiAnnual", "annual"] as Period[]).map((per) => (
                           <button
                             key={per}
                             type="button"
-                            onClick={() =>
-                              setSelectedPeriod({
-                                ...selectedPeriod,
-                                [p._id]: per,
-                              })
-                            }
+                            onClick={() => setSelectedPeriod({ ...selectedPeriod, [p._id]: per })}
                             className={cn(
                               "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                               period === per
@@ -362,43 +256,29 @@ export default function SubscriptionPage() {
                     {/* Price with discount */}
                     <div className="mt-4">
                       {isComingSoon ? (
-                        <span className="text-2xl font-bold text-muted-foreground">
-                          به‌زودی
-                        </span>
+                        <span className="text-2xl font-bold text-muted-foreground">به‌زودی</span>
                       ) : priceInfo.price === 0 ? (
                         <span className="text-3xl font-bold">رایگان</span>
                       ) : (
                         <div className="space-y-1">
-                          {priceInfo.original > 0 &&
-                            priceInfo.original !== priceInfo.price && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground line-through">
-                                  {toPersianDigits(
-                                    priceInfo.original.toLocaleString("en-US")
-                                  )}
-                                </span>
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
-                                  ٪{toPersianDigits(discountPercent)} تخفیف
-                                </Badge>
-                              </div>
-                            )}
+                          {priceInfo.original > 0 && priceInfo.original !== priceInfo.price && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground line-through">
+                                {toPersianDigits(priceInfo.original.toLocaleString("en-US"))}
+                              </span>
+                              <Badge variant="destructive" className="text-xs">
+                                ٪{toPersianDigits(discountPercent)} تخفیف
+                              </Badge>
+                            </div>
+                          )}
                           <div>
                             <span className="text-3xl font-bold text-primary">
-                              {toPersianDigits(
-                                priceInfo.price.toLocaleString("en-US")
-                              )}
+                              {toPersianDigits(priceInfo.price.toLocaleString("en-US"))}
                             </span>
-                            <span className="text-sm text-muted-foreground">
-                              {" "}
-                              تومان
-                            </span>
+                            <span className="text-sm text-muted-foreground"> تومان</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {PERIOD_LABELS[period]} (
-                            {toPersianDigits(PERIOD_DAYS[period])} روز)
+                            {PERIOD_LABELS[period]} ({toPersianDigits(PERIOD_DAYS[period])} روز)
                           </p>
                         </div>
                       )}
@@ -430,18 +310,12 @@ export default function SubscriptionPage() {
                         disabled={trialMutation.isPending}
                         onClick={() => handlePlanClick(p._id, p.monthlyPrice)}
                       >
-                        {trialMutation.isPending ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          "فعال‌سازی رایگان"
-                        )}
+                        {trialMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "فعال‌سازی رایگان"}
                       </Button>
                     ) : !paymentEnabled ? (
                       // Paid plan + payment disabled → show contact phone
                       <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
-                        <p className="text-sm font-medium text-foreground">
-                          برای خرید تماس بگیرید
-                        </p>
+                        <p className="text-sm font-medium text-foreground">برای خرید تماس بگیرید</p>
                         <a
                           href={`tel:${contactPhone}`}
                           className="mt-1 flex items-center justify-center gap-1.5 text-lg font-bold text-primary hover:underline"
@@ -458,11 +332,7 @@ export default function SubscriptionPage() {
                         disabled={paymentMutation.isPending}
                         onClick={() => handlePlanClick(p._id, p.monthlyPrice)}
                       >
-                        {paymentMutation.isPending ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          "خرید اشتراک"
-                        )}
+                        {paymentMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "خرید اشتراک"}
                       </Button>
                     )}
                   </CardContent>
@@ -494,44 +364,15 @@ export default function SubscriptionPage() {
                 </TableHeader>
                 <TableBody>
                   {subHistory.items.map((sub) => {
-                    const plan =
-                      typeof sub.subscriptionPlan === "object"
-                        ? sub.subscriptionPlan
-                        : null;
+                    const plan = typeof sub.subscriptionPlan === "object" ? sub.subscriptionPlan : null;
                     return (
                       <TableRow key={sub._id}>
-                        <TableCell label="پلن" className="font-medium">
-                          {plan?.name || "—"}
-                        </TableCell>
-                        <TableCell
-                          label="تاریخ شروع"
-                          className="text-sm text-muted-foreground"
-                        >
-                          {toJalali(sub.startDate)}
-                        </TableCell>
-                        <TableCell
-                          label="تاریخ انقضا"
-                          className="text-sm text-muted-foreground"
-                        >
-                          {toJalali(sub.expireDate)}
-                        </TableCell>
+                        <TableCell label="پلن" className="font-medium">{plan?.name || "—"}</TableCell>
+                        <TableCell label="تاریخ شروع" className="text-sm text-muted-foreground">{toJalali(sub.startDate)}</TableCell>
+                        <TableCell label="تاریخ انقضا" className="text-sm text-muted-foreground">{toJalali(sub.expireDate)}</TableCell>
                         <TableCell label="وضعیت" className="text-center">
-                          <Badge
-                            variant={
-                              sub.status === "active"
-                                ? "default"
-                                : sub.status === "expired"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {sub.status === "active"
-                              ? "فعال"
-                              : sub.status === "expired"
-                              ? "منقضی"
-                              : sub.status === "cancelled"
-                              ? "لغو شده"
-                              : "در انتظار"}
+                          <Badge variant={sub.status === "active" ? "default" : sub.status === "expired" ? "secondary" : "outline"}>
+                            {sub.status === "active" ? "فعال" : sub.status === "expired" ? "منقضی" : sub.status === "cancelled" ? "لغو شده" : "در انتظار"}
                           </Badge>
                         </TableCell>
                       </TableRow>

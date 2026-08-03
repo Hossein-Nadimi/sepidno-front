@@ -357,6 +357,7 @@ export default function AdminCatalogsPage() {
                       <SelectItem value="مجلسی">مجلسی</SelectItem>
                       <SelectItem value="مانتو و زنانه">مانتو و زنانه</SelectItem>
                       <SelectItem value="پتو و رختخواب">پتو و رختخواب</SelectItem>
+                      <SelectItem value="لحاف">لحاف</SelectItem>
                       <SelectItem value="پرده و روفرشی">پرده و روفرشی</SelectItem>
                       <SelectItem value="کودک">کودک</SelectItem>
                       <SelectItem value="کیف و چمدان">کیف و چمدان</SelectItem>

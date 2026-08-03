@@ -421,6 +421,13 @@ export interface AdminBusiness {
   category?: { _id: string; name: string; slug: string };
   createdAt: string;
   updatedAt: string;
+  // Attached by the admin list endpoint:
+  subscription?: { planName: string; expireDate: string; smsCredits: number; smsCreditsUsed: number } | null;
+  smsRemaining?: number;
+  smsSent?: number;
+  smsFailed?: number;
+  smsCreditsUsed?: number;
+  orderCount?: number;
 }
 
 export const adminReportService = {
