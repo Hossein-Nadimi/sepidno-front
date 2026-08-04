@@ -152,9 +152,12 @@ export default function NewOrderPage() {
     }
   }, [customerResults, debouncedSearch, selectedCustomer]);
 
-  // Price map
+  // Price map — only include ACTIVE pricing entries.
+  // If a pricing is inactive, it should NOT show as a pre-set price in
+  // the order form — the user should be prompted to enter a manual price.
   const priceMap = new Map<string, number>();
   (pricingData?.items || []).forEach((p) => {
+    if (p.active === false) return; // skip inactive pricing
     const g = typeof p.garmentType === "object" ? p.garmentType?._id : p.garmentType;
     const s = typeof p.serviceType === "object" ? p.serviceType?._id : p.serviceType;
     if (g && s) priceMap.set(`${g}-${s}`, p.price);

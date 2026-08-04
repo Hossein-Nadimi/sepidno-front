@@ -112,9 +112,10 @@ export default function EditOrderPage() {
     queryFn: () => settingsService.get(),
   });
 
-  // Price map
+  // Price map — only include ACTIVE pricing entries.
   const priceMap = new Map<string, number>();
   (pricingData?.items || []).forEach((p) => {
+    if (p.active === false) return; // skip inactive pricing
     const g = typeof p.garmentType === "object" ? p.garmentType?._id : p.garmentType;
     const s = typeof p.serviceType === "object" ? p.serviceType?._id : p.serviceType;
     if (g && s) priceMap.set(`${g}-${s}`, p.price);
